@@ -483,7 +483,7 @@ namespace Mist{
     int tmpFd = open("/dev/null", O_RDWR);
     outFile.open(tmpFd);
     Util::Procs::socketList.insert(tmpFd);
-    genericWriter(inUrl + ".dtsh", &outFile, false);
+    // genericWriter(inUrl + ".dtsh", &outFile, false);
     if (outFile){M.send(outFile, false, M.getValidTracks(), false);}
     bps = 0;
     std::set<size_t> tracks = M.getValidTracks();

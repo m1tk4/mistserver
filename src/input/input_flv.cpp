@@ -112,7 +112,7 @@ namespace Mist{
     int tmpFd = open("/dev/null", O_RDWR);
     outFile.open(tmpFd);
     Util::Procs::socketList.insert(tmpFd);
-    genericWriter(config->getString("input") + ".dtsh", &outFile, false);
+    // genericWriter(config->getString("input") + ".dtsh", &outFile, false);
     if (outFile){M.send(outFile, false, M.getValidTracks(), false);}
     Util::fseek(inFile, 13, SEEK_SET);
     return true;
