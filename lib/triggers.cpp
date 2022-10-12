@@ -177,6 +177,8 @@ namespace Triggers{
     snprintf(thisPageName, NAME_BUFFER_SIZE, SHM_TRIGGER, type.c_str());
     IPC::sharedPage typePage(thisPageName, 8 * 1024, false, false);
     if (!typePage.mapped){// page doesn't exist?
+      // alex debug:
+      if(type != "STREAM_END")
       VERYHIGH_MSG("No triggers for %s found", type.c_str());
       return false;
     }

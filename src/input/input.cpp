@@ -1445,7 +1445,7 @@ namespace Mist{
             INFO_MSG("Part %zu (@%" PRIu64 ") size mismatch: %zu (actual) != %zu (expected)", partNo, thisTime, dataLen, parts.getSize(partNo));
           }
           ++partNo;
-          HIGH_MSG("Buffering VoD packet (%zuB) @%" PRIu64 " ms on track %zu with offset %" PRIu64, dataLen, thisTime, idx, thisPacket.getInt("offset"));
+          // HIGH_MSG("Buffering VoD packet (%zuB) @%" PRIu64 " ms on track %zu with offset %" PRIu64, dataLen, thisTime, idx, thisPacket.getInt("offset"));
           bufferNext(thisTime, thisPacket.getInt("offset"), idx, data, dataLen,
                      thisPacket.getInt("bpos"), thisPacket.getFlag("keyframe"), page);
           ++packCounter;

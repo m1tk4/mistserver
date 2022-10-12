@@ -419,7 +419,7 @@ namespace TS{
       paySize += curPack->getPayloadLength();
       curPack++;
     }
-    VERYHIGH_MSG("Parsing PES for track %zu, length %" PRIu32, tid, paySize);
+    // VERYHIGH_MSG("Parsing PES for track %zu, length %" PRIu32, tid, paySize);
     // allocate a buffer, do it all again, but this time also copy the data bytes over to char*
     // payload
     char *payload = (char *)malloc(paySize);

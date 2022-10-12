@@ -804,7 +804,7 @@ namespace Mist{
               // keyframe data exists, so always add 19 bytes keyframedata.
               uint32_t packOffset = headerPack.hasMember("offset") ? headerPack.getInt("offset") : 0;
               size_t packSendSize = 24 + (packOffset ? 17 : 0) + (entId >= 0 ? 15 : 0) + 19 + dataLen + 11;
-              VERYHIGH_MSG("Adding packet (%zuB) at %zu with an offset of %" PRIu32 " on track %zu", dataLen, packetTime, packOffset, idx);
+              // VERYHIGH_MSG("Adding packet (%zuB) at %zu with an offset of %" PRIu32 " on track %zu", dataLen, packetTime, packOffset, idx);
               meta.update(packetTime, packOffset, idx, dataLen, entId, headerPack.hasMember("keyframe"), packSendSize);
               tsStream.getEarliestPacket(headerPack);
             }
@@ -833,7 +833,7 @@ namespace Mist{
           // keyframe data exists, so always add 19 bytes keyframedata.
           long long packOffset = headerPack.hasMember("offset") ? headerPack.getInt("offset") : 0;
           long long packSendSize = 24 + (packOffset ? 17 : 0) + (entId >= 0 ? 15 : 0) + 19 + dataLen + 11;
-          VERYHIGH_MSG("Adding packet (%zuB) at %zu with an offset of %llu on track %zu", dataLen, packetTime, packOffset, idx);
+          // VERYHIGH_MSG("Adding packet (%zuB) at %zu with an offset of %llu on track %zu", dataLen, packetTime, packOffset, idx);
           meta.update(packetTime, packOffset, idx, dataLen, entId, headerPack.hasMember("keyframe"), packSendSize);
           tsStream.getEarliestPacket(headerPack);
         }
@@ -1134,7 +1134,7 @@ namespace Mist{
         VERYHIGH_MSG("Found elapsed key with a time of %lu ms at playlist index %zu while seeking", keys.getTime(i), keys.getBpos(i)-1);
         break;
       }
-      VERYHIGH_MSG("Found valid key with a time of %lu ms at playlist index %zu while seeking", keys.getTime(i), keys.getBpos(i)-1);
+      // VERYHIGH_MSG("Found valid key with a time of %lu ms at playlist index %zu while seeking", keys.getTime(i), keys.getBpos(i)-1);
       plistEntry = keys.getBpos(i);
     }
 
@@ -1204,7 +1204,7 @@ namespace Mist{
           newTime = 0;
           FAIL_MSG("Time offset is too negative causing an integer overflow. Setting current packet time to 0.");
         }else{
-          VERYHIGH_MSG("Adjusting timestamp %lu -> %lu (offset is %ld)", newTime, newTime + plsTimeOffset[currentPlaylist], plsTimeOffset[currentPlaylist]);
+          // VERYHIGH_MSG("Adjusting timestamp %lu -> %lu (offset is %ld)", newTime, newTime + plsTimeOffset[currentPlaylist], plsTimeOffset[currentPlaylist]);
           newTime += plsTimeOffset[currentPlaylist];
         }
       }
@@ -1212,7 +1212,7 @@ namespace Mist{
     }else{
       // Apply offset if any was set
       if (plsTimeOffset.count(currentPlaylist)){
-        VERYHIGH_MSG("Adjusting timestamp %lu -> %lu (offset is %ld)", newTime, newTime + plsTimeOffset[currentPlaylist], plsTimeOffset[currentPlaylist]);
+        // VERYHIGH_MSG("Adjusting timestamp %lu -> %lu (offset is %ld)", newTime, newTime + plsTimeOffset[currentPlaylist], plsTimeOffset[currentPlaylist]);
         newTime += plsTimeOffset[currentPlaylist];
       }
       if (plsLastTime.count(currentPlaylist)){

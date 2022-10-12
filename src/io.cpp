@@ -382,8 +382,8 @@ namespace Mist{
     // This also happens in bufferNext, with the same rules
     if (aMeta.getLive()){
       if (packTime < aMeta.getLastms(packTrack)){
-        HIGH_MSG("Wrong order on track %" PRIu32 " ignored: %" PRIu64 " < %" PRIu64, packTrack,
-                 packTime, aMeta.getLastms(packTrack));
+        // HIGH_MSG("Wrong order on track %" PRIu32 " ignored: %" PRIu64 " < %" PRIu64, packTrack,
+        //          packTime, aMeta.getLastms(packTrack));
         return;
       }
       if (packTime > aMeta.getLastms(packTrack) + 30000 && aMeta.getLastms(packTrack)){
