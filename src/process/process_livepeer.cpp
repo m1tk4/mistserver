@@ -60,13 +60,15 @@ namespace Mist{
 
   //Source process, takes data from input stream and sends to livepeer
   class ProcessSource : public TSOutput{
+  private:
+    int _segmentIndex; // debug
   public:
     bool isRecording(){return false;}
     bool isReadyForPlay(){
       if (!TSOutput::isReadyForPlay()){return false;}
       size_t mTrk = getMainSelectedTrack();
       if (mTrk == INVALID_TRACK_ID || M.getType(mTrk) != "video"){
-        HIGH_MSG("NOT READY (non-video main track)");
+        HIGH_MSG("[dbg][ProcessSource] NOT READY (non-video main track)");
         return false;
       }
       return true;
@@ -81,6 +83,7 @@ namespace Mist{
       wantRequest = false;
       parseData = true;
       currPreSeg = 0;
+      _segmentIndex = 0;
     };
     virtual bool onFinish(){
       if (opt.isMember("exit_unmask") && opt["exit_unmask"].asBool()){
@@ -137,6 +140,7 @@ namespace Mist{
       }
       if (thisTime > statSourceMs){statSourceMs = thisTime;}
       if (thisPacket.getFlag("keyframe") && M.trackLoaded(thisIdx) && M.getType(thisIdx) == "video" && (thisTime - presegs[currPreSeg].time) >= 1000){
+        INFO_MSG("[dbg][ProcessSource] segmenting - split-decision time=%" PRIu64 " currPreSeg=%d", thisTime, (int) currPreSeg)
         sourceIndex = getMainSelectedTrack();
         if (presegs[currPreSeg].data.size() > 187){
           presegs[currPreSeg].keyNo = keyCount;
@@ -146,8 +150,12 @@ namespace Mist{
           presegs[currPreSeg].fullyRead = false;
           presegs[currPreSeg].fullyWritten = true;
           currPreSeg = (currPreSeg+1) % PRESEG_COUNT;
+          INFO_MSG("[dbg][ProcessSource] segmenting - split-cut time=%d nextPreSeg=%d segDuration=%d segIdx=%d", (int) thisTime, (int) currPreSeg, (int) presegs[currPreSeg].segDuration, _segmentIndex)
+          _segmentIndex ++;
         }
+        INFO_MSG("[dbg][ProcessSource] waiting on presegs free slot")
         while (!presegs[currPreSeg].fullyRead && conf.is_active){Util::sleep(100);}
+        INFO_MSG("[dbg][ProcessSource] found presegs free slot")
         presegs[currPreSeg].data.assign(0, 0);
         extraKeepAway = 0;
         needsLookAhead = 0;
@@ -204,7 +212,7 @@ namespace Mist{
           uint64_t lastPacket = 0xFFFFFFFFFFFFFFFFull;
           for (segIt = segs.begin(); segIt != segs.end(); ++segIt){
             if (isStuck){
-              WARN_MSG("Considering %s: T%" PRIu64 ", fullyWritten: %s, fullyRead: %s", segIt->first.c_str(), segIt->second.lastPacket, segIt->second.fullyWritten?"Y":"N", segIt->second.fullyRead?"Y":"N");
+              WARN_MSG("[dbg][ProcessSink] ? Considering %s: T%" PRIu64 ", fullyWritten: %s, fullyRead: %s", segIt->first.c_str(), segIt->second.lastPacket, segIt->second.fullyWritten?"Y":"N", segIt->second.fullyRead?"Y":"N");
             }
             if (!segIt->second.fullyWritten){continue;}
             if (segIt->second.lastPacket > lastPacket){continue;}
@@ -212,7 +220,7 @@ namespace Mist{
             lastPacket = segIt->second.lastPacket;
           }
           if (oRend.size()){
-            if (isStuck){WARN_MSG("Picked %s!", oRend.c_str());}
+            if (isStuck){WARN_MSG("[dbg][ProcessSink] ? Picked %s!", oRend.c_str());}
             readySegment & S = segs[oRend];
             while (!S.S.hasPacket() && S.byteOffset <= S.data.size() - 188){
               S.S.parse(S.data + S.byteOffset, 0);
@@ -223,7 +231,7 @@ namespace Mist{
               S.S.getEarliestPacket(thisPacket);
               if (!S.offsetCalcd){
                 S.timeOffset = S.time - thisPacket.getTime();
-                HIGH_MSG("First timestamp of %s at time %" PRIu64 " is %" PRIu64 ", adjusting by %" PRId64, oRend.c_str(), S.time, thisPacket.getTime(), S.timeOffset);
+                HIGH_MSG("[dbg][ProcessSink] ? First timestamp of %s at time %" PRIu64 " is %" PRIu64 ", adjusting by %" PRId64, oRend.c_str(), S.time, thisPacket.getTime(), S.timeOffset);
                 S.offsetCalcd = true;
               }
               timeOffset = S.timeOffset;
@@ -234,7 +242,7 @@ namespace Mist{
               trackId = (S.ID << 16) + thisPacket.getTrackId();
               thisIdx = M.trackIDToIndex(trackId, getpid());
               if (thisIdx == INVALID_TRACK_ID || !M.getCodec(thisIdx).size()){
-                INFO_MSG("Initializing track %zi as %" PRIu64 " for playlist %zu", thisPacket.getTrackId(), trackId, S.ID);
+                INFO_MSG("[dbg][ProcessSink] ? Initializing track %zi as %" PRIu64 " for playlist %zu", thisPacket.getTrackId(), trackId, S.ID);
                 S.S.initializeMetadata(meta, thisPacket.getTrackId(), trackId);
                 thisIdx = M.trackIDToIndex(trackId, getpid());
                 meta.setSourceTrack(thisIdx, sourceIndex);
@@ -252,7 +260,7 @@ namespace Mist{
         if (!thisPacket){
           Util::sleep(25);
           if (userSelect.size() && userSelect.begin()->second.getStatus() == COMM_STATUS_REQDISCONNECT){
-            Util::logExitReason("buffer requested shutdown");
+            Util::logExitReason("[dbg][ProcessSink] ? buffer requested shutdown");
             return;
           }
         }
@@ -284,9 +292,9 @@ void sinkThread(void *){
   Mist::ProcessSink in(&co);
   co.activate();
   co.is_active = true;
-  INFO_MSG("Running sink thread...");
+  INFO_MSG("[dbg][ProcessSink] Running sink thread...");
   in.run();
-  INFO_MSG("Sink thread shutting down");
+  INFO_MSG("[dbg][ProcessSink] Sink thread shutting down");
   conf.is_active = false;
   co.is_active = false;
 }
@@ -319,11 +327,11 @@ void sourceThread(void *){
   Socket::Connection c(devnull, devnull);
   Mist::ProcessSource out(c);
   if (conf.is_active){
-    INFO_MSG("Running source thread...");
+    INFO_MSG("[dbg][ProcessSource] Running source thread...");
     out.run();
-    INFO_MSG("Stopping source thread...");
+    INFO_MSG("[dbg][ProcessSource] Stopping source thread...");
   }else{
-    INFO_MSG("Aborting source thread...");
+    INFO_MSG("[dbg][ProcessSource] Aborting source thread...");
   }
   conf.is_active = false;
   co.is_active = false;
@@ -426,8 +434,14 @@ void uploadThread(void * num){
   bool was422 = false;
   std::string prevURL;
   while (conf.is_active){
+    INFO_MSG("[dbg][uploadThread %d] waiting for prepared presegs[%d]", myNum, myNum)
     while (conf.is_active && !mySeg.fullyWritten){Util::sleep(100);}
-    if (!conf.is_active){return;}//Exit early on shutdown
+    INFO_MSG("[dbg][uploadThread %d] found prepared presegs[%d]", myNum, myNum)
+    if (!conf.is_active){
+      //Exit early on shutdown
+      INFO_MSG("[dbg][uploadThread %d] Exit early on shutdown", myNum)
+      return;
+    }
     size_t attempts = 0;
     do{
       HTTP::URL target;
@@ -449,10 +463,11 @@ void uploadThread(void * num){
       }
 
       uint64_t uplTime = Util::getMicros();
+      INFO_MSG("[dbg][uploadThread %d] posting segment size=%d to=%s", myNum, (int)mySeg.data.size(), target.getUrl().c_str())
       if (upper.post(target, mySeg.data, mySeg.data.size())){
         uplTime = Util::getMicros(uplTime);
         if (upper.getStatusCode() == 200){
-          MEDIUM_MSG("Uploaded %zu bytes (time %" PRIu64 "-%" PRIu64 " = %" PRIu64 " ms) to %s in %.2f ms", mySeg.data.size(), mySeg.time, mySeg.time+mySeg.segDuration, mySeg.segDuration, target.getUrl().c_str(), uplTime/1000.0);
+          MEDIUM_MSG("[dbg][uploadThread %d] Uploaded %zu bytes (time %" PRIu64 "-%" PRIu64 " = %" PRIu64 " ms) to %s in %.2f ms", myNum, mySeg.data.size(), mySeg.time, mySeg.time+mySeg.segDuration, mySeg.segDuration, target.getUrl().c_str(), uplTime/1000.0);
           was422 = false;
           prevURL.clear();
           mySeg.fullyWritten = false;
@@ -464,14 +479,14 @@ void uploadThread(void * num){
             parseMultipart(mySeg, upper.getHeader("Content-Type"), upper.const_data());
           }else{
             ++statFailParse;
-            FAIL_MSG("Non-multipart response received - this version only works with multipart!");
+            FAIL_MSG("[dbg][uploadThread %d] Non-multipart response received - this version only works with multipart!", myNum);
           }
           insertTurn = (insertTurn + 1) % PRESEG_COUNT;
           break;//Success: no need to retry
         }else if (upper.getStatusCode() == 422){
           //segment rejected by broadcaster node; try a different broadcaster at most once and keep track
           ++statFailN200;
-          WARN_MSG("Rejected upload of %zu bytes to %s after %.2f ms: %" PRIu32 " %s", mySeg.data.size(), target.getUrl().c_str(), uplTime/1000.0, upper.getStatusCode(), upper.getStatusText().c_str());
+          WARN_MSG("[dbg][uploadThread %d] Rejected upload of %zu bytes to %s after %.2f ms: %" PRIu32 " %s", myNum, mySeg.data.size(), target.getUrl().c_str(), uplTime/1000.0, upper.getStatusCode(), upper.getStatusText().c_str());
           if (was422){
             //second error in a row, fire off LIVEPEER_SEGMENT_REJECTED trigger
             segmentRejectedTrigger(mySeg, prevURL, target.getUrl());
@@ -485,19 +500,24 @@ void uploadThread(void * num){
         }else{
           //Failure due to non-200/422 status code
           ++statFailN200;
-          WARN_MSG("Failed to upload %zu bytes to %s in %.2f ms: %" PRIu32 " %s", mySeg.data.size(), target.getUrl().c_str(), uplTime/1000.0, upper.getStatusCode(), upper.getStatusText().c_str());
+          WARN_MSG("[dbg][uploadThread %d] Failed to upload %zu bytes to %s in %.2f ms: %" PRIu32 " %s", myNum, mySeg.data.size(), target.getUrl().c_str(), uplTime/1000.0, upper.getStatusCode(), upper.getStatusText().c_str());
         }
       }else{
         //other failures and aborted uploads
-        if (!conf.is_active){return;}//Exit early on shutdown
+        if (!conf.is_active){
+          //Exit early on shutdown
+          INFO_MSG("[dbg][uploadThread %d] network failures and aborted uploads, exit early on shutdown", myNum)
+          return;
+        }
         uplTime = Util::getMicros(uplTime);
         ++statFailTimeout;
-        WARN_MSG("Failed to upload %zu bytes to %s in %.2f ms", mySeg.data.size(), target.getUrl().c_str(), uplTime/1000.0);
+        WARN_MSG("[dbg][uploadThread %d] network failures and aborted uploads, failed to upload %zu bytes to %s in %.2f ms", myNum, mySeg.data.size(), target.getUrl().c_str(), uplTime/1000.0);
       }
       //Error handling
       attempts++;
       Util::sleep(100);//Rate-limit retries
       if (attempts > 4){
+        ERROR_MSG("[dbg][uploadThread %d] too many upload failures", myNum)
         Util::logExitReason("too many upload failures");
         conf.is_active = false;
         return;
@@ -508,7 +528,7 @@ void uploadThread(void * num){
         std::string prevBroadAddr = Mist::currBroadAddr;
         Mist::pickRandomBroadcaster();
         if (!Mist::currBroadAddr.size()){
-          FAIL_MSG("Cannot switch to new broadcaster: none available");
+          FAIL_MSG("[dbg][uploadThread %d] Cannot switch to new broadcaster: none available", myNum);
           Util::logExitReason("no Livepeer broadcasters available");
           conf.is_active = false;
           return;
@@ -516,9 +536,9 @@ void uploadThread(void * num){
         if (Mist::currBroadAddr != prevBroadAddr){
           ++statSwitches;
           switchSuccess = true;
-          WARN_MSG("Switched to new broadcaster: %s", Mist::currBroadAddr.c_str());
+          WARN_MSG("[dbg][uploadThread %d] Switched to new broadcaster: %s", myNum, Mist::currBroadAddr.c_str());
         }else{
-          WARN_MSG("Cannot switch broadcaster; only a single option is available");
+          WARN_MSG("[dbg][uploadThread %d] Cannot switch broadcaster; only a single option is available", myNum);
         }
       }
       if (!switchSuccess && was422){
@@ -526,6 +546,7 @@ void uploadThread(void * num){
         segmentRejectedTrigger(mySeg, prevURL, "N/A");
         was422 = false;
         prevURL.clear();
+        ERROR_MSG("[dbg][uploadThread %d] no switch possible, exiting", myNum)
         break;
       }
     }while(conf.is_active);
@@ -779,7 +800,7 @@ int main(int argc, char *argv[]){
   const std::string & srcStrm = Mist::opt["source"].asStringRef();
   if (config.getBool("kickoff")){
     if (!Util::startInput(srcStrm, "")){
-      FAIL_MSG("Could not connector and/or start source stream!");
+      FAIL_MSG("[dbg] Could not connector and/or start source stream!");
       return 1;
     }
     uint8_t streamStat = Util::getStreamStatus(srcStrm);
@@ -792,7 +813,7 @@ int main(int argc, char *argv[]){
       streamStat = Util::getStreamStatus(srcStrm);
     }
     if (streamStat != STRMSTAT_READY){
-      FAIL_MSG("Stream not available!");
+      FAIL_MSG("[dbg] Stream not available! exiting");
       return 1;
     }
   }
@@ -822,7 +843,7 @@ int main(int argc, char *argv[]){
     }
   }
   if (sourceIdx == INVALID_TRACK_ID || !M.getWidth(sourceIdx) || !M.getHeight(sourceIdx)){
-    FAIL_MSG("No valid source track!");
+    FAIL_MSG("[dbg] No valid source track! exiting");
     return 1;
   }
 
@@ -883,7 +904,7 @@ int main(int argc, char *argv[]){
         prof->removeMember("track_inhibit");
       }
     }
-    INFO_MSG("Profile parsed: %s", prof->toString().c_str());
+    INFO_MSG("[dbg] Profile parsed: %s", prof->toString().c_str());
   }
  
   //Connect to livepeer API
@@ -897,36 +918,36 @@ int main(int argc, char *argv[]){
   } else {
     //Get broadcaster list, pick first valid address
     if (!dl.get(HTTP::URL(api_url+"/broadcaster"))){
-      FAIL_MSG("Livepeer API responded negatively to request for broadcaster list");
+      FAIL_MSG("[dbg] Livepeer API responded negatively to request for broadcaster list");
       return 1;
     }
     Mist::lpBroad = JSON::fromString(dl.data());
   }
   if (!Mist::lpBroad || !Mist::lpBroad.isArray()){
-    FAIL_MSG("No Livepeer broadcasters available");
+    FAIL_MSG("[dbg] No Livepeer broadcasters available");
     return 1;
   }
   Mist::pickRandomBroadcaster();
   if (!Mist::currBroadAddr.size()){
-  FAIL_MSG("No Livepeer broadcasters available");
+  FAIL_MSG("[dbg] No Livepeer broadcasters available");
     return 1;
   }
-  INFO_MSG("Using broadcaster: %s", Mist::currBroadAddr.c_str());
+  INFO_MSG("[dbg] Using broadcaster: %s", Mist::currBroadAddr.c_str());
   if (Mist::opt.isMember("access_token") && Mist::opt["access_token"] && Mist::opt["access_token"].isString()){
     //send transcode request
     dl.setHeader("Content-Type", "application/json");
     dl.setHeader("Authorization", "Bearer "+Mist::opt["access_token"].asStringRef());
     if (!dl.post(HTTP::URL(api_url+"/stream"), pl.toString())){
-      FAIL_MSG("Livepeer API responded negatively to encode request");
+      FAIL_MSG("[dbg] Livepeer API responded negatively to encode request");
       return 1;
     }
     Mist::lpEnc = JSON::fromString(dl.data());
     if (!Mist::lpEnc){
-      FAIL_MSG("Livepeer API did not respond with JSON");
+      FAIL_MSG("[dbg] Livepeer API did not respond with JSON");
       return 1;
     }
     if (!Mist::lpEnc.isMember("id")){
-      FAIL_MSG("Livepeer API did not respond with a valid ID: %s", dl.data().data());
+      FAIL_MSG("[dbg] Livepeer API did not respond with a valid ID: %s", dl.data().data());
       return 1;
     }
     Mist::lpID = Mist::lpEnc["id"].asStringRef();
@@ -936,7 +957,7 @@ int main(int argc, char *argv[]){
     Mist::lpID = Mist::opt["source"].asStringRef() + "-" + Util::generateRandomString(8);
   }
 
-  INFO_MSG("Livepeer transcode ID: %s", Mist::lpID.c_str());
+  INFO_MSG("[dbg] Livepeer transcode ID: %s", Mist::lpID.c_str());
   uint64_t lastProcUpdate = Util::bootSecs();
   pStat["proc_status_update"]["id"] = getpid();
   pStat["proc_status_update"]["proc"] = "Livepeer";
