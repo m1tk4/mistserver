@@ -167,6 +167,7 @@ namespace Mist{
       capa["name"] = "Livepeer";
       streamName = opt["sink"].asString();
       if (!streamName.size()){streamName = opt["source"].asString();}
+      if (streamName == "-"){streamName.clear();}
       Util::streamVariables(streamName, opt["source"].asString());
       {
         tthread::lock_guard<tthread::mutex> guard(statsMutex);
