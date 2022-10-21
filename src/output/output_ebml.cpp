@@ -48,7 +48,7 @@ namespace Mist{
       if (config->getString("target").find(".webm") != std::string::npos){doctype = "webm";}
       initialize();
       if (!M.getLive()){calcVodSizes();}
-      if (!streamName.size()){
+      if (!streamName.size() && !input){
         WARN_MSG("Recording unconnected EBML output to file! Cancelled.");
         conn.close();
         return;

@@ -64,7 +64,11 @@ namespace Mist{
 
       wantRequest = false;
       parseData = true;
-    } else if (target.protocol == "s3+http" || target.protocol == "s3+https" || target.protocol == "s3"){
+    }else if (target == "-"){
+      myConn.open(STDOUT_FILENO, STDOUT_FILENO);
+      wantRequest = false;
+      parseData = true;
+    } else if (!targetUrl.isLocalPath() ){
       addFinalHeader = true;
       isUrlTarget = true;
       forceVodPlaylist = true;
@@ -292,15 +296,17 @@ namespace Mist{
     prevTsFile = tsLocation;
     // Set the start time of the current segment. We will know the end time once the next split point is reached
     previousStartTime = lastPacketTime;
-    // Set the next filename we will push towards once the split point is reached
-    HTTP::URL target(getenv("MST_ORIG_TARGET"));
-    if (isUrlTarget){
-      tsLocation = target.link(std::string("./") + JSON::Value(durationSum).asString() + ".ts").getUrl();
-    }else{
-      tsLocation = target.link(std::string("./") + JSON::Value(durationSum).asString() + ".ts").getFilePath();
+    if (getenv("MST_ORIG_TARGET")){
+      // Set the next filename we will push towards once the split point is reached
+      HTTP::URL target(getenv("MST_ORIG_TARGET"));
+      if (isUrlTarget){
+        tsLocation = target.link(std::string("./") + JSON::Value(durationSum).asString() + ".ts").getUrl();
+      }else{
+        tsLocation = target.link(std::string("./") + JSON::Value(durationSum).asString() + ".ts").getFilePath();
+      }
+      INFO_MSG("Setting next target TS file '%s'", tsLocation.c_str());
+      setenv("MST_ORIG_TARGET", tsLocation.c_str(), 1);
     }
-    INFO_MSG("Setting next target TS file '%s'", tsLocation.c_str());
-    setenv("MST_ORIG_TARGET", tsLocation.c_str(), 1);
 
     TSOutput::sendHeader();
   }
