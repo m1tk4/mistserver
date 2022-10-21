@@ -1434,7 +1434,7 @@ namespace DTSC{
 
   /// Evaluates to true if this is a shared-memory-backed object, correctly mapped, with a non-exit
   /// state on the "stream" RelAccX page.
-  Meta::operator bool() const{return !isMemBuf && streamPage.mapped && !stream.isExit();}
+  Meta::operator bool() const{return isMemBuf || (streamPage.mapped && !stream.isExit());}
 
   /// Intended to be used for encryption. Not currently called anywhere.
   size_t Meta::addCopy(size_t sourceTrack){
@@ -2635,26 +2635,32 @@ namespace DTSC{
     uint64_t dataLen = 34; // + (merged ? 17 : 0) + (bufferWindow ? 24 : 0) + 21;
     if (getVod()){dataLen += 14;}
     if (getLive()){dataLen += 15 + 19;} // 19 for unixzero
-    for (std::map<size_t, Track>::const_iterator it = tracks.begin(); it != tracks.end(); it++){
-      if (!it->second.parts.getPresent()){continue;}
-      if (!selectedTracks.size() || selectedTracks.count(it->first)){
-        dataLen += (124 + getInit(it->first).size() + getCodec(it->first).size() +
-                    getType(it->first).size() + getTrackIdentifier(it->first, true).size());
-        if (!skipDynamic){
-          dataLen += ((it->second.fragments.getPresent() * DTSH_FRAGMENT_SIZE) + 16);
-          dataLen += ((it->second.keys.getPresent() * DTSH_KEY_SIZE) + 11);
-          dataLen += ((it->second.keys.getPresent() * 4) + 15);
-          dataLen += ((it->second.parts.getPresent() * DTSH_PART_SIZE) + 12);
-          //          dataLen += ivecs.size() * 8 + 12; /*LTS*/
-          if (it->second.track.getInt("missedFrags")){dataLen += 23;}
-        }
-        std::string lang = getLang(it->first);
-        if (lang.size() && lang != "und"){dataLen += 11 + lang.size();}
-        if (getType(it->first) == "audio"){
-          dataLen += 49;
-        }else if (getType(it->first) == "video"){
-          dataLen += 48;
-        }
+    for (std::set<size_t>::const_iterator it = selectedTracks.begin(); it != selectedTracks.end(); it++){
+      dataLen += (124 + getInit(*it).size() + getCodec(*it).size() +
+                  getType(*it).size() + getTrackIdentifier(*it, true).size());
+      if (!skipDynamic){
+
+        const Util::RelAccX &fragments = tracks.at(*it).fragments;
+        const Util::RelAccX &keys = tracks.at(*it).keys;
+        const Util::RelAccX &parts = tracks.at(*it).parts;
+
+        size_t fragCount = fragments.getPresent();
+        size_t keyCount = keys.getPresent();
+        size_t partCount = parts.getPresent();
+
+        dataLen += ((fragCount * DTSH_FRAGMENT_SIZE) + 16);
+        dataLen += ((keyCount * DTSH_KEY_SIZE) + 11);
+        dataLen += ((keyCount * 4) + 15);
+        dataLen += ((partCount * DTSH_PART_SIZE) + 12);
+        //          dataLen += ivecs.size() * 8 + 12; /*LTS*/
+        if (getMissedFragments(*it)){dataLen += 23;}
+      }
+      std::string lang = getLang(*it);
+      if (lang.size() && lang != "und"){dataLen += 11 + lang.size();}
+      if (getType(*it) == "audio"){
+        dataLen += 49;
+      }else if (getType(*it) == "video"){
+        dataLen += 48;
       }
     }
     /*
@@ -2662,7 +2668,7 @@ namespace DTSC{
       dataLen += 13 + sourceURI.size();
     }
     */
-    return dataLen + 8; // add 8 bytes header
+    return dataLen;
   }
 
   ///\brief Converts a short to a char*
@@ -2767,7 +2773,7 @@ namespace DTSC{
     }
 
     conn.SendNow(DTSC::Magic_Header, 4);
-    conn.SendNow(c32(getSendLen(skipDynamic, selectedTracks) - 8), 4);
+    conn.SendNow(c32(lVarSize + getSendLen(skipDynamic, selectedTracks)), 4);
     conn.SendNow("\340", 1);
     if (getVod()){conn.SendNow("\000\003vod\001\000\000\000\000\000\000\000\001", 14);}
     if (getLive()){conn.SendNow("\000\004live\001\000\000\000\000\000\000\000\001", 15);}
