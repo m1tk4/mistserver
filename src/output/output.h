@@ -139,6 +139,7 @@ namespace Mist{
 
     // Read/write status variables
     Socket::Connection &myConn; ///< Connection to the client.
+    Socket::Connection input;
 
     bool wantRequest; ///< If true, waits for a request.
     bool parseData; ///< If true, triggers initalization if not already done, sending of header, sending of packets.

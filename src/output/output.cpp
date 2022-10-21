@@ -129,6 +129,15 @@ namespace Mist{
       Util::setStreamName(streamName);
     }
 
+    if (!streamName.size()){
+      input.open(-1, STDIN_FILENO);
+      if (!input){
+        WARN_MSG("Recording unconnected %s output to file! Cancelled.", capa["name"].asString().c_str());
+        onFail("Unconnected recording output", true);
+      }
+      return;
+    }
+
     /*LTS-START*/
     // If we have a target, scan for trailing ?, remove it, parse into targetParams
     if (config->hasOption("target")){
@@ -191,12 +200,56 @@ namespace Mist{
   void Output::initialize(){
     MEDIUM_MSG("initialize");
     if (isInitialized){return;}
-    if (streamName.size() < 1){
-      return; // abort - no stream to initialize...
+    if (!streamName.size()){
+      //Reading from standard input
+      meta.reInit("");
+
+      while (input && config->is_active){
+        input.spool();
+        if (!input.Received().available(8)){
+          Util::sleep(100);
+          continue;
+        }
+        if (input.Received().copy(4) != "DTSC"){
+          FAIL_MSG("Received a wrong type of packet - '%s'", input.Received().copy(4).c_str());
+          Util::logExitReason("received invalid packet on input: %s", input.Received().copy(4).c_str());
+          config->is_active = false;
+          meta.clear();
+          return;
+        }
+        // Command message
+        std::string toRec = input.Received().copy(8);
+        uint32_t rSize = Bit::btohl(toRec.c_str() + 4);
+        if (!input.Received().available(8 + rSize)){
+          Util::sleep(100);
+          continue; // abort - not enough data yet
+        }
+        std::string dataPacket = input.Received().remove(8 + rSize);
+        DTSC::Packet metaPack(dataPacket.data(), dataPacket.size());
+        DTSC::Meta nM("", metaPack.getScan());
+        meta.merge(nM, true, false);
+        //Force live mode, for now
+        meta.setLive(true);
+        meta.setVod(false);
+        meta.setBootMsOffset(nM.getBootMsOffset());
+        userSelect.clear();
+        break;
+      }
+      sought = true;
+      isInitialized = true;
+      if (M){selectDefaultTracks();}
+      if (!M || !userSelect.size()){
+        FAIL_MSG("Could not select any tracks from input");
+        Util::logExitReason("Could not select any tracks from input");
+        config->is_active = false;
+        meta.clear();
+        return;
+      }
+      return;
     }
     reconnect();
     // if the connection failed, fail
-    if (!meta || streamName.size() < 1){
+    if (!meta){
       onFail("Could not connect to stream", true);
       return;
     }
@@ -428,7 +481,7 @@ namespace Mist{
     for (std::set<size_t>::iterator it = diffs.begin(); it != diffs.end(); it++){
       HIGH_MSG("Adding track %zu", *it);
       userSelect[*it].reload(streamName, *it);
-      if (!userSelect[*it]){
+      if (!userSelect[*it] && streamName.size()){
         WARN_MSG("Could not select track %zu, dropping track", *it);
         newSelects.erase(*it);
         userSelect.erase(*it);
@@ -1218,9 +1271,11 @@ namespace Mist{
     // Connect to file target, if needed
     if (isFileTarget()){
       if (!streamName.size()){
-        WARN_MSG("Recording unconnected %s output to file! Cancelled.", capa["name"].asString().c_str());
-        onFail("Unconnected recording output", true);
-        return 2;
+        if (!input){
+          WARN_MSG("Recording unconnected %s output to file! Cancelled.", capa["name"].asString().c_str());
+          onFail("Unconnected recording output", true);
+          return 2;
+        }
       }
       initialize();
       if (!M.getValidTracks().size() || !userSelect.size() || !keepGoing()){
@@ -1504,6 +1559,24 @@ namespace Mist{
   /// \returns true if thisPacket was filled with the next packet.
   /// \returns false if we could not reliably determine the next packet yet.
   bool Output::prepareNext(){
+    //Handle reading from standard input, if connected
+    if (input){
+      thisPacket.reInit(input);
+      if (!thisPacket){return false;}
+      if (thisPacket.getVersion() == DTSC::DTCM){return false;}
+      if (thisPacket.getVersion() == DTSC::DTSC_HEAD){return false;}
+      thisTime = thisPacket.getTime();
+      thisIdx = M.trackIDToIndex(thisPacket.getTrackId());
+
+      char *data;
+      size_t dataLen;
+      thisPacket.getString("data", data, dataLen);
+      meta.update(thisTime, thisPacket.getInt("offset"), thisIdx, dataLen, 0, thisPacket.getFlag("keyframe"));
+      INFO_MSG("Read packet: %" PRIu64 " -> %" PRIu64 "@%" PRIu64 ": %zu", thisPacket.getTrackId(), thisIdx, thisTime, userSelect.count(thisIdx));
+      return userSelect.count(thisIdx);
+    }
+
+    //All other (non-stdin) input handled in the rest of the function
     if (!buffer.size()){
       thisPacket.null();
       INFO_MSG("Buffer completely played out");

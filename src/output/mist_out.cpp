@@ -65,7 +65,7 @@ int main(int argc, char *argv[]){
         FAIL_MSG("Error reloading: %s", strerror(errno));
       }
     }else{
-      Socket::Connection S(fileno(stdout), fileno(stdin));
+      Socket::Connection S(STDOUT_FILENO, -1);
       mistOut tmp(S);
       return tmp.run();
     }

@@ -271,6 +271,7 @@ namespace Comms{
   }
 
   void Users::reload(const std::string &_streamName, size_t idx, uint8_t initialState){
+    if (!streamName.size()){return;}
     reload(_streamName);
     if (dataPage){
       setTrack(idx);
