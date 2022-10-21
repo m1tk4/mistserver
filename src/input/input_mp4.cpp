@@ -187,17 +187,12 @@ namespace Mist{
 
   bool inputMP4::checkArguments(){
     if (config->getString("input") == "-"){
-      std::cerr << "Input from stdin not yet supported" << std::endl;
+      FAIL_MSG("Input from stdin not yet supported");
       return false;
     }
-    if (!config->getString("streamname").size()){
-      if (config->getString("output") == "-"){
-        std::cerr << "Output to stdout not yet supported" << std::endl;
-        return false;
-      }
-    }else{
+    if (config->getString("streamname").size()){
       if (config->getString("output") != "-"){
-        std::cerr << "File output in player mode not supported" << std::endl;
+        FAIL_MSG("File output in memory loader mode not supported");
         return false;
       }
       streamName = config->getString("streamname");

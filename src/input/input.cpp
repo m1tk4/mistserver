@@ -540,59 +540,46 @@ namespace Mist{
   }
 
   void Input::convert(){
-    INFO_MSG("Starting conversion");
     std::string fileName = config->getString("output");
-    if (fileName == "-"){
-      FAIL_MSG("No filename specified, exiting");
-      return;
-    }
-    if (fileName.size() < 5 || fileName.substr(fileName.size() - 5) != ".dtsc"){
-      fileName += ".dtsc";
-    }
-    std::ofstream file(fileName.c_str());
+    Socket::Connection outData(STDOUT_FILENO, -1);
+    if (fileName != "-"){genericWriter(fileName, &outData);}
+    INFO_MSG("Starting conversion, writing to %s", fileName.c_str());
 
+    //Create local-only non-shared metadata instance
     DTSC::Meta outMeta;
 
-    std::set<size_t> validTracks = M.getValidTracks();
-    for (std::set<size_t>::iterator it = validTracks.begin(); it != validTracks.end(); it++){
-      std::string type = M.getType(*it);
-      size_t idx = outMeta.addTrack(M.fragments(*it).getPresent(), M.keys(*it).getPresent(),
-                                    M.parts(*it).getPresent());
-      outMeta.setID(idx, M.getID(*it));
-      outMeta.setType(idx, type);
-      outMeta.setCodec(idx, M.getCodec(*it));
-      outMeta.setInit(idx, M.getInit(*it));
-      outMeta.setLang(idx, M.getLang(*it));
-      if (type == "video"){
-        outMeta.setHeight(idx, M.getHeight(*it));
-        outMeta.setWidth(idx, M.getWidth(*it));
-        outMeta.setFpks(idx, M.getFpks(*it));
-      }
-      if (type == "audio"){
-        outMeta.setRate(idx, M.getRate(*it));
-        outMeta.setSize(idx, M.getSize(*it));
-        outMeta.setChannels(idx, M.getChannels(*it));
-      }
+    //Temporarily, force live mode no matter what
+    outMeta.setLive(true);
+    outMeta.setVod(false);
+
+    ////If we're live, the copy will be live without VoD.
+    ////If we're not live, the copy will be VoD without live.
+    //outMeta.setLive(M.getLive());
+    //outMeta.setVod(!M.getLive());
+
+    //Copy valid track properties from original, without content
+    outMeta.merge(M, false, false);
+    std::set<size_t> vTrks = M.getValidTracks();
+
+    if (outMeta.getLive()){
+      //If live, write out header without data
+      outMeta.send(outData, true, vTrks, true);
+    }else{
+      //If non-live, create data representation inside header as well
+      FAIL_MSG("Writing DTSC out not yet supported for non-live inputs!");
+      return;
     }
-    // output to dtsc
-    uint64_t bpos = 0;
 
     seek(0);
+    size_t pktCount = 0;
     getNext();
     while (thisPacket){
-      outMeta.updatePosOverride(thisPacket, bpos);
-      file.write(thisPacket.getData(), thisPacket.getDataLen());
-      bpos += thisPacket.getDataLen();
+      DTSC::Packet p(thisPacket, thisIdx+1);
+      outData.SendNow(p.getData(), p.getDataLen());
+      ++pktCount;
       getNext();
     }
-    // close file
-    file.close();
-    Socket::Connection outFile;
-    int tmpFd = open("/dev/null", O_RDWR);
-    outFile.open(tmpFd);
-    Util::Procs::socketList.insert(tmpFd);
-    genericWriter(config->getString("input") + ".dtsh", &outFile, false);
-    if (outFile){M.send(outFile, false, M.getValidTracks(), false);}
+    INFO_MSG("Reached end of input after %zu packets at time %" PRIu64, pktCount, thisTime);
   }
 
   /// \brief Makes the generic writer available to input classes
