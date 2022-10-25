@@ -87,6 +87,11 @@ bool AnalyserDTSC::parsePacket(){
       std::cout << DTSC::Meta("", P.getScan()).toPrettyString();
     }
     if (detail == 2){std::cout << "DTSC header: " << P.getScan().toPrettyString() << std::endl;}
+    if (detail == -2){
+      std::cout << P.getScan().toPrettyString() << std::endl;
+      // need entire header info and then exit
+      stop();
+    }
     if (detail == 1){
       bool hasH264 = false;
       bool hasAAC = false;
