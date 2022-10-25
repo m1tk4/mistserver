@@ -64,11 +64,11 @@ namespace Mist{
 
       wantRequest = false;
       parseData = true;
-    }else if (target == "-"){
+    }else if (config->getString("target") == "-"){
       myConn.open(STDOUT_FILENO, STDOUT_FILENO);
       wantRequest = false;
       parseData = true;
-    } else if (!targetUrl.isLocalPath() ){
+    } else if (!target.isLocalPath() ){
       addFinalHeader = true;
       isUrlTarget = true;
       forceVodPlaylist = true;
@@ -85,7 +85,7 @@ namespace Mist{
       targetParams["split"] = ss.str();
     } else if (config->getString("target").size()){
       addFinalHeader = true;
-      HTTP::URL target(config->getString("target"));
+      HTTP::URL target(config->getString("target")); // << this is redundant
       // If writing to a playlist file, set target strings and remember playlist location
       if(target.getExt() == "m3u" || target.getExt() == "m3u8"){
         // Location to .m3u(8) file we will keep updated
