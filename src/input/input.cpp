@@ -631,12 +631,12 @@ namespace Mist{
       pidString << getpid();
       payload = streamName + "\n" + config->getString("input") + "\n" \
         + "MistIn" + capa["name"].asString() + "\n" + pidString.str() + "\n" \
-        + Util::MRExitReason + "\n" + Util::exitReason;
+        + Util::mRExitReason + "\n" + Util::exitReason;
     }
     // If no reason is set at all, return the default status
     if (!Util::exitReason[0]){
       INFO_MSG("Input closing without a set exit reason");
-    }else if(strncmp(Util::MRExitReason, "CLEAN", 5) == 0){
+    }else if(strncmp(Util::mRExitReason, "CLEAN", 5) == 0){
       INFO_MSG("Input closing cleanly with reason: %s", Util::exitReason);
       returnCode = 0; 
     }else{

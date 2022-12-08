@@ -17,7 +17,7 @@ namespace Util{
   extern __thread char streamName[256]; ///< Used by debug messages to identify the stream name
   void setStreamName(const std::string & sn);
   extern __thread char exitReason[256];
-  extern __thread char MRExitReason[256];
+  extern __thread char* mRExitReason;
   void logExitReason(const char* shortString, const char *format, ...);
 
   /// Deals with parsing configuration from commandline options.

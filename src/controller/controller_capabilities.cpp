@@ -109,13 +109,13 @@ namespace Controller{
     trgs["STREAM_BUFFER"]["response"] = "ignored";
     trgs["STREAM_BUFFER"]["response_action"] = "None.";
 
-    trgs["STREAM_END"]["when"] = "Every time an Input process exits with an error";
+    trgs["STREAM_END"]["when"] = "Every time a stream ends (no more viewers after a period of activity)";
     trgs["STREAM_END"]["stream_specific"] = true;
     trgs["STREAM_END"]["payload"] = "stream name (string)\ndownloaded bytes (integer)\nuploaded bytes (integer)\ntotal viewers (integer)\ntotal inputs (integer)\ntotal outputs (integer)\nviewer seconds (integer)";
     trgs["STREAM_END"]["response"] = "ignored";
     trgs["STREAM_END"]["response_action"] = "None.";
 
-    trgs["INPUT_ABORT"]["when"] = "Every time an input stops (for good or bad reasons)";
+    trgs["INPUT_ABORT"]["when"] = "Every time an Input process exits with an error";
     trgs["INPUT_ABORT"]["stream_specific"] = true;
     trgs["INPUT_ABORT"]["payload"] = "stream name (string)\nsource URI (string)\nbinary name (string)\npid (integer)\nmachine-readable reason for exit (string, enum)\nhuman-readable reason for exit (string)";
     trgs["INPUT_ABORT"]["response"] = "ignored";

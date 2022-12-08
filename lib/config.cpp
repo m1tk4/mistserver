@@ -41,8 +41,8 @@ bool Util::Config::is_restarting = false;
 static Socket::Server *serv_sock_pointer = 0;
 uint32_t Util::printDebugLevel = DEBUG;
 __thread char Util::streamName[256] = {0};
-__thread char Util::exitReason[256] ={0};
-__thread char Util::MRExitReason[256] = ER_UNKNOWN;
+__thread char Util::exitReason[256] = {0};
+__thread char* Util::mRExitReason = (char*)ER_UNKNOWN;
 
 
 void Util::setStreamName(const std::string & sn){
@@ -55,7 +55,7 @@ void Util::logExitReason(const char* shortString, const char *format, ...){
   va_start(args, format);
   vsnprintf(exitReason, 255, format, args);
   va_end(args);
-  snprintf(MRExitReason, 255, shortString);
+  mRExitReason = (char*)shortString;
 }
 
 std::string Util::listenInterface;
