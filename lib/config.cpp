@@ -42,18 +42,20 @@ static Socket::Server *serv_sock_pointer = 0;
 uint32_t Util::printDebugLevel = DEBUG;
 __thread char Util::streamName[256] = {0};
 __thread char Util::exitReason[256] ={0};
+__thread char Util::MRExitReason[256] = ER_UNKNOWN;
 
 
 void Util::setStreamName(const std::string & sn){
   strncpy(Util::streamName, sn.c_str(), 256);
 }
 
-void Util::logExitReason(const char *format, ...){
+void Util::logExitReason(const char* shortString, const char *format, ...){
   if (exitReason[0]){return;}
   va_list args;
   va_start(args, format);
   vsnprintf(exitReason, 255, format, args);
   va_end(args);
+  snprintf(MRExitReason, 255, shortString);
 }
 
 std::string Util::listenInterface;
@@ -605,9 +607,9 @@ void Util::Config::signal_handler(int signum, siginfo_t *sigInfo, void *ignore){
     case SI_TIMER:
     case SI_ASYNCIO:
     case SI_MESGQ:
-      logExitReason("signal %s (%d) from process %d", strsignal(signum), signum, sigInfo->si_pid);
+      logExitReason(ER_CLEAN_SIGNAL, "signal %s (%d) from process %d", strsignal(signum), signum, sigInfo->si_pid);
       break;
-    default: logExitReason("signal %s (%d)", strsignal(signum), signum);
+    default: logExitReason(ER_CLEAN_SIGNAL, "signal %s (%d)", strsignal(signum), signum);
     }
     is_active = false;
   default:
