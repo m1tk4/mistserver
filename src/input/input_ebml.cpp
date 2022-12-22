@@ -105,12 +105,12 @@ namespace Mist{
   bool InputEBML::checkArguments(){
     if (!config->getString("streamname").size()){
       if (config->getString("output") == "-"){
-        std::cerr << "Output to stdout not yet supported" << std::endl;
+        Util::logExitReason(ER_FORMAT_SPECIFIC, "Output to stdout not yet supported");
         return false;
       }
     }else{
       if (config->getString("output") != "-"){
-        std::cerr << "File output in player mode not supported" << std::endl;
+        Util::logExitReason(ER_FORMAT_SPECIFIC, "File output in player mode not supported");
         return false;
       }
     }
@@ -130,7 +130,10 @@ namespace Mist{
       std::string input = config->getString("input").substr(9);
       int fin = -1, fout = -1;
       Util::Procs::StartPipedShell(input.c_str(), &fin, &fout, 0);
-      if (fout == -1){return false;}
+      if (fout == -1){
+        Util::logExitReason(ER_PROCESS_SPECIFIC, "Unable to start mkv-exec process `%s`", input.c_str());
+        return false;
+      }
       dup2(fout, 0);
       inFile.open(0);
       return true;
@@ -141,7 +144,10 @@ namespace Mist{
     }else{
       // open File
       inFile.open(config->getString("input"));
-      if (!inFile){return false;}
+      if (!inFile){
+        Util::logExitReason(ER_READ_START_FAILURE, "Opening input '%s' failed", config->getString("input").c_str());
+        return false;
+      }
       standAlone = inFile.isSeekable();
     }
     return true;
@@ -241,7 +247,10 @@ namespace Mist{
   }
 
   bool InputEBML::readHeader(){
-    if (!inFile){return false;}
+    if (!inFile){
+      Util::logExitReason(ER_READ_START_FAILURE, "Reading header for '%s' failed: Could not open input stream", config->getString("input").c_str());
+      return false;
+    }
     if (!meta || (needsLock() && isSingular())){
       meta.reInit(isSingular() ? streamName : "");
     }
@@ -708,7 +717,7 @@ namespace Mist{
         }
       }
       if (seekPos > readPos + readBuffer.size()){
-        Util::logExitReason("Input file seek abort");
+        Util::logExitReason(ER_READ_START_FAILURE, "Input file seek abort");
         config->is_active = false;
         readBufferOffset = 0;
         return;
