@@ -5,34 +5,52 @@ MistServer is an open source, public domain, full-featured, next-generation stre
 
 For full documentation, tutorials, guides and assistance, please look on our website at: https://mistserver.org
 
+
+This Fork: m1tk4/mistserver
+===========================
+This fork of MistServer provides RPM packages for it (mainly for my own use but you're welcome to them!) using GitHub CI build system and GitHub Hosting. Check out the "Releases" section to the 
+right for links to individual RPMs.
+
+The releases in this fork track `development` branch in https://github.com/DDVTECH/mistserver/tree/development
+
 Getting MistServer onto your system
 ===================================
 
-We provide precompiled binaries for most common operating systems here: https://mistserver.org/download
+1. Make sure CRB, EPEL, and RPMFusion repositories are enabled on your server:
 
-Using the "Copy install cmd" button will give you a command you can paste into a terminal to set up MistServer running as root under your system's init daemon (systemd recommended, but not required).
+    ```bash
+    # Rocky9/Alma9:
+    dnf -y install 'dnf-command(config-manager)'; \
+    dnf config-manager --set-enabled crb; \
+    dnf config-manager --set-enabled devel; \
+    dnf -y install epel-release; \
+    dnf -y install --nogpgcheck \
+        https://dl.fedoraproject.org/pub/epel/epel-release-latest-$(rpm -E %rhel).noarch.rpm; \
+    dnf -y install --nogpgcheck \
+        https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm \
+        https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-$(rpm -E %rhel).noarch.rpm
+    ```
+2. Install `mistserver` RPM from https://github.com/m1tk4/mistserver/releases
 
-You can also manually install, will instructions can be found in our manual: https://mistserver.org/guides/latest
+3. If you need to be able to stream files other than MP4/TS install `mistserver-in-av` RPM.
 
-Compile instructions
-====================
+4. Enable and start `mistserver` service:
 
-We make use of cmake for compilation. The default configuration requires mbedtls and libsrtp2 to be installed on your system.
+    ```bash
+    systemctl enable --now mistserver
+    ```
 
-The version of mbedtls we require is a specific branch that supports DTLS and SRTP for WebRTC, which can be found here: https://github.com/livepeer/mbedtls/tree/dtls_srtp_support
+5. Configure `firewalld` according to the outputs you are using in MistServer. Sample commands:
 
-All compilaton options can be discovered and set through `cmake-gui`; more complete compile instructions will follow soon.
+    ```bash
+    firewall-cmd --permanent --add-port={4242,4200,8080,1935,5554}/tcp; \
+    firewall-cmd --permanent --add-port={4242,8888,8889}/udp; \
+    firewall-cmd --reload
+    ```
 
 Usage
 =====
 
-MistServer is booted by starting the `MistController` binary, which then scans the directory it is stored in for further `Mist*` binaries and runs them to discover what inputs/outputs/processes are available.
-
-Running the controller in a terminal will walk you through a brief first-time setup, and then listen on port 4242 for API connections. Accessing port 4242 from a web browser will bring up a web interface capable of easily running most API commands for human-friendly configuration.
+Accessing port 4242 from a web browser will bring up a web interface capable of easily running most API commands for human-friendly configuration.
 
 Full usage instructions and API specifications can be found in the manual: https://mistserver.org/guides/latest
-
-Contributing
-============
-
-If you're interested in contributing to MistServer development, please reach out to us through info@mistserver.org. Full contribution guidelines will be made available soon.
