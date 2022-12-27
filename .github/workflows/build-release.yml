@@ -5,13 +5,9 @@
 on:
 
   push:
-
     # Sequence of patterns matched against refs/tags
-    tags:
-    - 'v*' # Push events to matching v*, i.e. v1.0, v20.15.10
-
-    # Only on podbuilder branch - we have no Github CI anywhere else (yet)
-    branches: [ podbuilder ]
+    branches: [ podbuilder ] # Only on podbuilder branch - we have no Github CI anywhere else (yet)
+    tags: ['v*'] # Push events to matching v*, i.e. v1.0, v20.15.10    
 
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
@@ -25,7 +21,9 @@ jobs:
     steps:
       
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+            fetch-depth: 0
 
       - name: Build Packages
         run: |
