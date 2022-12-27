@@ -48,3 +48,4 @@ distclean ::
 	-@podman image prune --force
 	-@podman container rm --force $(BUILDER_CTR)
 	-@podman container prune --force
+	-@rm -f *.rpm
