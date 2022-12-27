@@ -28,7 +28,7 @@ build ::
 		$(BUILDER_IMG) $(CTR_RUN_COMMAND)
 
 BUILD_VERSION := $(shell git describe --tags | cut -d- -f1 | tr -d v)
-BUILD_RELEASE := $(shell git describe --tags | cut -d- -f2).$(shell git log --pretty=format:'%h' -n 1)
+BUILD_RELEASE := $(shell git log --pretty=format:'%h' -n 1)
 ctr-build:
 	rpmbuild \
 		--define "_topdir `mktemp -d`" \
