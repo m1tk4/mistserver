@@ -27,9 +27,16 @@ RUN dnf -y install nasm gcc-c++
 # Fetch and build mbedtls - note we are forcing -fPIC so we could build shared library for MistServer components later
 RUN git clone --branch dtls_srtp_support https://github.com/livepeer/mbedtls.git /home/mbedtls
 RUN cd /home/mbedtls; \
-    cmake "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" -S . -B /home/build.mbed; \
+    cmake "-DCMAKE_POSITION_INDEPENDENT_CODE:BOOL=true" "-DCMAKE_INSTALL_PREFIX=/usr" "-DCMAKE_INSTALL_LIBDIR=lib64" -S . -B /home/build.mbed; \
     cmake --build /home/build.mbed ; \
     cmake --install /home/build.mbed
+
+# Fetch and build RIST
+RUN git clone -b v0.2.7 https://code.videolan.org/rist/librist.git /home/rist; \
+    dnf -y install cjson-devel libcmocka-devel; \
+    meson setup -Dprefix=/usr -Dlibdir=lib64 -Dbuiltin_mbedtls=true -Ddefault_library=static /home/rist /home/build.rist; \
+    meson compile -C /home/build.rist; \
+    meson install -C /home/build.rist
 
 # Ensure the termination happens on container stop, cgroup, starting init
 WORKDIR /home/src/scripts/podbuilder

@@ -36,6 +36,9 @@ strip %{buildroot}%{_bindir}/*
 strip %{buildroot}%{_libdir}/*
 
 install --mode=644 -D %{_sourcedir}/mistserver.service      %{buildroot}%{_unitdir}/mistserver.service
+install --mode=644 -D %{_sourcedir}/UNLICENSE               %{buildroot}/usr/share/licenses/mistserver/UNLICENSE
+install --mode=644 -D %{_sourcedir}/COPYING.md              %{buildroot}/usr/share/licenses/mistserver/COPYING.md
+
 echo "{}" >%{_builddir}/mistserver.conf 
 install --mode=644 -D %{_builddir}/mistserver.conf      %{buildroot}%{_sysconfdir}/mistserver.conf
 
@@ -85,6 +88,7 @@ rm -rf %{buildroot}
 %{_bindir}/MistInSDP
 %{_bindir}/MistInSRT
 %{_bindir}/MistInTS
+%{_bindir}/MistInTSRIST
 %{_bindir}/MistInTSSRT
 %{_bindir}/MistOutAAC
 %{_bindir}/MistOutCMAF
@@ -109,6 +113,7 @@ rm -rf %{buildroot}
 %{_bindir}/MistOutSRT
 %{_bindir}/MistOutTS
 %{_bindir}/MistOutTSSRT
+%{_bindir}/MistOutTSRIST
 %{_bindir}/MistOutWAV
 %{_bindir}/MistOutWebRTC
 %{_bindir}/MistProcFFMPEG
@@ -121,21 +126,27 @@ rm -rf %{buildroot}
 %{_bindir}/MistUtilMETA
 %{_bindir}/MistUtilNuke
 %{_bindir}/MistUtilRAX
+
 %{_libdir}/libmist.so
 %{_libdir}/libmist_srt.so
 %{_unitdir}/mistserver.service
+
+%license /usr/share/licenses/mistserver/UNLICENSE
+%license /usr/share/licenses/mistserver/COPYING.md
 
 %package devel
 Summary: MistServer library headers
 %description devel
 MistServer library headers
+Requires: mistserver
 %files devel
 %{_includedir}/mist/*.h
 
 %package in-av
 Summary: MistServer libav Input
 %description in-av
-Summary: MistServer libav Input
+MistServer libav Input
+Requires: mistserver
 %files in-av
 %{_bindir}/MistInAV
 
