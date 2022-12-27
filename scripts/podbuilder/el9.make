@@ -10,23 +10,25 @@ BUILD_BIN=$(BUILD_DIR).bin
 CTR_SOURCE_DIR=/home/src
 CTR_BUILD_DIR=/home/build
 CTR_OUT_DIR=/home/out
-CTR_COMMAND=
+CTR_RUN_COMMAND=
+CTR_RUN_OPTIONS=
 ifdef DEBUG
-CTR_COMMAND=/bin/bash
+CTR_RUN_COMMAND=/bin/bash
+CTR_RUN_OPTIONS=-it
 endif
 
 
 build ::
 	-@podman rm --force --ignore $(BUILDER_CTR)
 	podman build --pull --rm --tag $(BUILDER_IMG) --file ./$(BUILDER_DOCKERFILE)
-	podman run -it \
+	podman run $(CTR_RUN_OPTIONS) \
 		-v $(SOURCE_DIR):$(CTR_SOURCE_DIR):ro,Z \
 		--name $(BUILDER_CTR) \
 		-v .:$(CTR_OUT_DIR):Z \
-		$(BUILDER_IMG) $(CTR_COMMAND)
+		$(BUILDER_IMG) $(CTR_RUN_COMMAND)
 
-BUILD_VERSION := $(shell git describe --tags | cut -d- -f 1,2 | tr - .)
-BUILD_RELEASE := $(shell git describe --tags | cut -d- -f 3)
+BUILD_VERSION := $(shell git describe --tags | cut -d- -f1 | tr -d v)
+BUILD_RELEASE := $(shell git describe --tags | cut -d- -f2).$(shell git log --pretty=format:'%h' -n 1)
 ctr-build:
 	rpmbuild \
 		--define "_topdir `mktemp -d`" \
