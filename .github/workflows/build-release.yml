@@ -23,11 +23,11 @@ jobs:
         with:
             fetch-depth: 0
 
-      - name: Exit if not on podbuilder branch
-        if: endsWith(github.ref, 'podbuilder') == false
-        run: |
-          echo ref: '${{ github.ref }}'
-          exit -1
+      #- name: Exit if not on podbuilder branch
+      #  if: endsWith(github.ref, 'podbuilder') == false
+      #  run: |
+      #    echo ref: '${{ github.ref }}'
+      #    exit -1
 
       - name: Build Packages
         run: |
