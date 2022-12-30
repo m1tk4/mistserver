@@ -25,7 +25,9 @@ jobs:
 
       - name: Exit if not on podbuilder branch
         if: endsWith(github.ref, 'podbuilder') == false
-        run: exit -1
+        run: |
+          echo ref: '${{ github.ref }}'
+          exit -1
 
       - name: Build Packages
         run: |
