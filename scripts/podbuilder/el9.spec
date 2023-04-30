@@ -86,7 +86,7 @@ rm -rf %{buildroot}
 %{_bindir}/MistInPlaylist
 %{_bindir}/MistInRTSP
 %{_bindir}/MistInSDP
-%{_bindir}/MistInSRT
+%{_bindir}/MistInSubRip
 %{_bindir}/MistInTS
 %{_bindir}/MistInTSRIST
 %{_bindir}/MistInTSSRT
@@ -110,7 +110,7 @@ rm -rf %{buildroot}
 %{_bindir}/MistOutRTMP
 %{_bindir}/MistOutRTSP
 %{_bindir}/MistOutSDP
-%{_bindir}/MistOutSRT
+%{_bindir}/MistOutSubRip
 %{_bindir}/MistOutTS
 %{_bindir}/MistOutTSSRT
 %{_bindir}/MistOutTSRIST
@@ -126,6 +126,10 @@ rm -rf %{buildroot}
 %{_bindir}/MistUtilMETA
 %{_bindir}/MistUtilNuke
 %{_bindir}/MistUtilRAX
+%{_bindir}/MistAnalyserFLAC
+%{_bindir}/MistInFLAC
+%{_bindir}/MistOutFLAC
+
 
 %{_libdir}/libmist.so
 %{_libdir}/libmist_srt.so
@@ -151,5 +155,7 @@ Requires: mistserver
 %{_bindir}/MistInAV
 
 %changelog
+* Sun Apr 04 2023 Dimitri Tarassenko <mitka@mitka.us> 3.2-x
+- Updated for MistServer 3.2
 * Mon Dec 26 2022 Dimitri Tarassenko <mitka@mitka.us> 1.0-1
 - First stab at it
