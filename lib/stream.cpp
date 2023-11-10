@@ -105,6 +105,26 @@ std::string Util::codecString(const std::string &codec, const std::string &initD
   if (codec == "AAC"){return "mp4a.40.2";}
   if (codec == "MP3"){return "mp4a.40.34";}
   if (codec == "AC3"){return "mp4a.a5";}
+  if (codec == "AV1"){
+    if (initData.size() < 4){return "av01";}// Can't determine properties. :-(
+    std::stringstream r;
+    r << "av01.";
+    r << (int)((initData[1] & 0b11100000) >> 5); //profile
+    r << ".";
+    r << std::setw(2) << std::setfill('0') << (int)(initData[1] & 0b00011111); //level
+    r << ((initData[2] & 0b10000000)?"H":"M"); //tier
+    r << ".";
+    switch (initData[2] & 0b01100000){
+      case 0b00000000: r << "08"; break;
+      case 0b01000000: r << "10"; break;
+      case 0b01100000: r << "12"; break;
+      case 0b00100000: r << "??"; break;
+    }
+    /// \TODO Implement the full descriptor as in https://aomediacodec.github.io/av1-isobmff/#codecsparam
+    /// Init data follows this format:
+    /// https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-syntax
+    return r.str();
+  }
   return "";
 }
 
@@ -703,7 +723,7 @@ JSON::Value Util::getInputBySource(const std::string &filename, bool isProvider)
           MEDIUM_MSG("Checking input %s: %s (%s)", inputs.getIndiceName(i).c_str(),
                      tmp_input.getMember("name").asString().c_str(), source.c_str());
 
-          if (tmpFn.substr(0, front.size()) == front && tmpFn.substr(tmpFn.size() - back.size()) == back){
+          if (tmpFn.size() >= front.size()+back.size() && tmpFn.substr(0, front.size()) == front && tmpFn.substr(tmpFn.size() - back.size()) == back){
             if (tmp_input.getMember("non-provider") && !isProvider){
               noProviderNoPick = true;
               continue;
@@ -720,7 +740,7 @@ JSON::Value Util::getInputBySource(const std::string &filename, bool isProvider)
         MEDIUM_MSG("Checking input %s: %s (%s)", inputs.getIndiceName(i).c_str(),
                    tmp_input.getMember("name").asString().c_str(), source.c_str());
 
-        if (tmpFn.substr(0, front.size()) == front && tmpFn.substr(tmpFn.size() - back.size()) == back){
+        if (tmpFn.size() >= front.size()+back.size() && tmpFn.substr(0, front.size()) == front && tmpFn.substr(tmpFn.size() - back.size()) == back){
           if (tmp_input.getMember("non-provider") && !isProvider){
             noProviderNoPick = true;
             continue;
@@ -742,6 +762,18 @@ JSON::Value Util::getInputBySource(const std::string &filename, bool isProvider)
     ret = input.asJSON();
   }
   return ret;
+}
+
+/// Sends a message to the local UDP API port
+void Util::sendUDPApi(JSON::Value & cmd){
+  HTTP::URL UDPAddr(getGlobalConfig("udpApi").asStringRef());
+  if (UDPAddr.protocol != "udp"){
+    FAIL_MSG("Local UDP API address not defined; can't send command to MistController!");
+    return;
+  }
+  Socket::UDPConnection uSock;
+  uSock.SetDestination(UDPAddr.host, UDPAddr.getPort());
+  uSock.SendNow(cmd.toString());
 }
 
 /// Attempt to start a push for streamname to target.
@@ -907,7 +939,12 @@ bool Util::checkException(const JSON::Value &ex, const std::string &useragent){
 }
 
 Util::DTSCShmReader::DTSCShmReader(const std::string &pageName){
-  rPage.init(pageName, 0, false, false);
+  size_t attempts = 0;
+  do {
+    rPage.init(pageName, 0, false, false);
+    ++attempts;
+    if (!rPage && attempts < 5){Util::sleep(10);}
+  } while (!rPage && attempts < 5);
   if (rPage){rAcc = Util::RelAccX(rPage.mapped);}
 }
 

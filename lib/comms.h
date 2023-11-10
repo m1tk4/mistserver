@@ -3,21 +3,6 @@
 #include "shared_memory.h"
 #include "util.h"
 
-#define COMM_STATUS_SOURCE 0x80
-#define COMM_STATUS_DONOTTRACK 0x40
-#define COMM_STATUS_DISCONNECT 0x20
-#define COMM_STATUS_REQDISCONNECT 0x10
-#define COMM_STATUS_ACTIVE 0x1
-#define COMM_STATUS_INVALID 0x0
-#define SESS_BUNDLE_DEFAULT_VIEWER 14
-#define SESS_BUNDLE_DEFAULT_OTHER 15
-#define SESS_DEFAULT_STREAM_INFO_MODE 1
-#define SESS_HTTP_AS_VIEWER 1
-#define SESS_HTTP_AS_OUTPUT 2
-#define SESS_HTTP_DISABLED 3
-#define SESS_HTTP_AS_UNSPECIFIED 4
-#define SESS_TKN_DEFAULT_MODE 15
-
 
 #define COMM_LOOP(comm, onActive, onDisconnect) \
   {\
@@ -41,6 +26,7 @@ namespace Comms{
   extern uint8_t sessionUnspecifiedMode;
   extern uint8_t sessionStreamInfoMode;
   extern uint8_t tknMode;
+  extern uint8_t defaultCommFlags;
   void sessionConfigCache();
 
   class Comms{

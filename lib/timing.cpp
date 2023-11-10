@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <cstring>
 #include <sys/time.h> //for gettimeofday
+#include <sys/stat.h>
 #include <time.h>     //for time and nanosleep
 #include <sstream>
 #include <stdlib.h>
@@ -51,6 +52,20 @@ void Util::sleep(int64_t ms){
   struct timespec T;
   T.tv_sec = ms / 1000;
   T.tv_nsec = 1000000 * (ms % 1000);
+  nanosleep(&T, 0);
+}
+
+/// Sleeps for roughly the indicated amount of microseconds.
+/// Will not sleep if ms is negative.
+/// Will not sleep for longer than 0.1 seconds (100000us).
+/// Can be interrupted early by a signal, no guarantee of minimum sleep time.
+/// Can be slightly off depending on OS accuracy.
+void Util::usleep(int64_t us){
+  if (us < 0){return;}
+  if (us > 100000){us = 100000;}
+  struct timespec T;
+  T.tv_sec = 0;
+  T.tv_nsec = 1000 * us;
   nanosleep(&T, 0);
 }
 
@@ -166,3 +181,13 @@ std::string Util::getDateString(uint64_t epoch){
   strftime(buffer, sizeof(buffer), "%a, %d %b %Y %H:%M:%S %z", timeinfo);
   return std::string(buffer);
 }
+
+/// Gets unix time of last file modification, or 0 if this information is not available for any reason
+uint64_t Util::getFileUnixTime(const std::string & filename){
+  struct stat fInfo;
+  if (stat(filename.c_str(), &fInfo) == 0){
+    return fInfo.st_mtime;
+  }
+  return 0;
+}
+

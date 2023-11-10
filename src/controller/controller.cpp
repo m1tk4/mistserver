@@ -41,6 +41,8 @@
 #define COMPILED_PASSWORD ""
 #endif
 
+uint64_t lastConfRead = 0;
+
 /// the following function is a simple check if the user wants to proceed to fix (y), ignore (n) or
 /// abort on (a) a question
 static inline char yna(std::string &user_input){
@@ -71,13 +73,59 @@ void createAccount(std::string account){
   }
 }
 
+/// Bitmask:
+/// 1 = Auto-read config from disk
+/// 2 = Auto-write config to disk
+static int configrw;
+
 /// Status monitoring thread.
-/// Will check outputs, inputs and converters every three seconds
+/// Checks status of "protocols" (listening outputs)
+/// Updates config from disk when changed
+/// Writes config to disk after some time of no changes
 void statusMonitor(void *np){
   Controller::loadActiveConnectors();
   while (Controller::conf.is_active){
-    // this scope prevents the configMutex from being locked constantly
+
+    // Check configuration file last changed time
+    uint64_t confTime = Util::getFileUnixTime(Controller::conf.getString("configFile"));
+    if (Controller::Storage.isMember("config_split")){
+      jsonForEach(Controller::Storage["config_split"], cs){
+        if (cs->isString()){
+          uint64_t subTime = Util::getFileUnixTime(cs->asStringRef());
+          if (subTime && subTime > confTime){confTime = subTime;}
+        }
+      }
+    }
+    // If we recently wrote, assume we know the contents since that time, too.
+    if (lastConfRead < Controller::lastConfigWrite){lastConfRead = Controller::lastConfigWrite;}
+    // If the config has changed, update Controller::lastConfigChange
     {
+      JSON::Value currConfig;
+      Controller::getConfigAsWritten(currConfig);
+      if (Controller::lastConfigSeen != currConfig){
+        Controller::lastConfigChange = Util::epoch();
+        Controller::lastConfigSeen = currConfig;
+      }
+    }
+    if (configrw & 1){
+      // Read from disk if they are newer than our last read
+      if (confTime && confTime > lastConfRead){
+        INFO_MSG("Configuration files changed - reloading configuration from disk");
+        tthread::lock_guard<tthread::mutex> guard(Controller::configMutex);
+        Controller::readConfigFromDisk();
+        lastConfRead = Controller::lastConfigChange;
+      }
+    }
+    if (configrw & 2){
+      // Write to disk if we have made no changes in the last 60 seconds and the files are older than the last change
+      if (Controller::lastConfigChange > Controller::lastConfigWrite && Controller::lastConfigChange < Util::epoch() - 60){
+        tthread::lock_guard<tthread::mutex> guard(Controller::configMutex);
+        Controller::writeConfigToDisk();
+        if (lastConfRead < Controller::lastConfigWrite){lastConfRead = Controller::lastConfigWrite;}
+      }
+    }
+
+    { // this scope prevents the configMutex from being locked constantly
       tthread::lock_guard<tthread::mutex> guard(Controller::configMutex);
       // checks online protocols, reports changes to status
       if (Controller::CheckProtocols(Controller::Storage["config"]["protocols"], Controller::capabilities)){
@@ -86,7 +134,8 @@ void statusMonitor(void *np){
       // checks stream statuses, reports changes to status
       Controller::CheckAllStreams(Controller::Storage["streams"]);
     }
-    Util::sleep(3000); // wait at least 3 seconds
+
+    Util::sleep(3000); // wait at most 3 seconds
   }
   if (Util::Config::is_restarting){
     Controller::prepareActiveConnectorsForReload();
@@ -137,6 +186,75 @@ void handleUSR1Parent(int signum, siginfo_t *sigInfo, void *ignore){
   Util::Config::is_restarting = true;
 }
 
+bool interactiveFirstTimeSetup(){
+  // check for username
+  if (!Controller::Storage.isMember("account") || Controller::Storage["account"].size() < 1){
+    std::string in_string = "";
+    while (yna(in_string) == 'x' && Controller::conf.is_active){
+      std::cout << "Account not set, do you want to create an account? (y)es, (n)o, (a)bort: ";
+      std::cout.flush();
+      std::getline(std::cin, in_string);
+      switch (yna(in_string)){
+      case 'y':{
+        // create account
+        std::string usr_string = "";
+        while (!(Controller::Storage.isMember("account") && Controller::Storage["account"].size() > 0) &&
+               Controller::conf.is_active){
+          std::cout << "Please type in the username, a colon and a password in the following "
+                       "format; username:password"
+                    << std::endl
+                    << ": ";
+          std::cout.flush();
+          std::getline(std::cin, usr_string);
+          createAccount(usr_string);
+        }
+      }break;
+      case 'a': return false; // abort bootup
+      case 't':{
+        createAccount("test:test");
+        if ((Controller::capabilities["connectors"].size()) &&
+            (!Controller::Storage.isMember("config") || !Controller::Storage["config"].isMember("protocols") ||
+             Controller::Storage["config"]["protocols"].size() < 1)){
+          // create protocols
+          jsonForEach(Controller::capabilities["connectors"], it){
+            if (!it->isMember("required")){
+              JSON::Value newProtocol;
+              newProtocol["connector"] = it.key();
+              Controller::Storage["config"]["protocols"].append(newProtocol);
+            }
+          }
+        }
+      }break;
+      }
+    }
+  }
+  // check for protocols
+  if ((Controller::capabilities["connectors"].size()) &&
+      (!Controller::Storage.isMember("config") || !Controller::Storage["config"].isMember("protocols") ||
+       Controller::Storage["config"]["protocols"].size() < 1)){
+    std::string in_string = "";
+    while (yna(in_string) == 'x' && Controller::conf.is_active){
+      std::cout << "Protocols not set, do you want to enable default protocols? (y)es, (n)o, (a)bort: ";
+      std::cout.flush();
+      std::getline(std::cin, in_string);
+      if (yna(in_string) == 'y'){
+        // create protocols
+        jsonForEach(Controller::capabilities["connectors"], it){
+          if (!it->isMember("required")){
+            JSON::Value newProtocol;
+            newProtocol["connector"] = it.key();
+            Controller::Storage["config"]["protocols"].append(newProtocol);
+          }
+        }
+      }else if (yna(in_string) == 'a'){
+        // abort controller startup
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 ///\brief The main loop for the controller.
 int main_loop(int argc, char **argv){
   {
@@ -168,11 +286,6 @@ int main_loop(int argc, char **argv){
   Controller::conf.addOption("interface", stored_interface);
   Controller::conf.addOption("username", stored_user);
   Controller::conf.addOption(
-      "maxconnsperip",
-      JSON::fromString("{\"long\":\"maxconnsperip\", \"short\":\"M\", \"arg\":\"integer\" "
-                       "\"default\":0, \"help\":\"Max simultaneous sessions per unique IP address. "
-                       "Only enforced if the USER_NEW trigger is in use.\"}"));
-  Controller::conf.addOption(
       "account", JSON::fromString("{\"long\":\"account\", \"short\":\"a\", \"arg\":\"string\" "
                                   "\"default\":\"\", \"help\":\"A username:password string to "
                                   "create a new account with.\"}"));
@@ -190,6 +303,10 @@ int main_loop(int argc, char **argv){
       "configFile", JSON::fromString("{\"long\":\"config\", \"short\":\"c\", \"arg\":\"string\" "
                                      "\"default\":\"config.json\", \"help\":\"Specify a config "
                                      "file other than default.\"}"));
+
+  Controller::conf.addOption(
+      "configrw", JSON::fromString("{\"long\":\"configrw\", \"short\":\"C\", \"arg\":\"string\" "
+                                     "\"default\":\"rw\", \"help\":\"If 'r', read config changes from disk. If 'w', writes them to disk after 60 seconds of no changes. If 'rw', does both (default). In all other cases does neither.\"}"));
 #ifdef UPDATER
   Controller::conf.addOption(
       "update", JSON::fromString("{\"default\":0, \"help\":\"Check for and install updates before "
@@ -234,8 +351,6 @@ int main_loop(int argc, char **argv){
                 << "!----" APPNAME " Started at " << buffer << " ----!" << std::endl;
     }
   }
-  // reload config from config file
-  Controller::Storage = JSON::fromFile(Controller::conf.getString("configFile"));
 
   {// spawn thread that reads stderr of process
     std::string logPipe = Util::getTmpFolder() + "MstLog";
@@ -278,81 +393,8 @@ int main_loop(int argc, char **argv){
     }
     setenv("MIST_CONTROL", "1", 0); // Signal in the environment that the controller handles all children
   }
-
-  if (Controller::Storage.isMember("config_split")){
-    jsonForEach(Controller::Storage["config_split"], cs){
-      if (cs->isString()){
-        JSON::Value tmpConf = JSON::fromFile(cs->asStringRef());
-        if (tmpConf.isMember(cs.key())){
-          INFO_MSG("Loading '%s' section of config from file %s", cs.key().c_str(), cs->asStringRef().c_str());
-          Controller::Storage[cs.key()] = tmpConf[cs.key()];
-        }else{
-          WARN_MSG("There is no '%s' section in file %s; skipping load", cs.key().c_str(), cs->asStringRef().c_str());
-        }
-      }
-    }
-  }
-  // Set default delay before retry
-  if (!Controller::Storage.isMember("push_settings")){
-    Controller::Storage["push_settings"]["wait"] = 3;
-    Controller::Storage["push_settings"]["maxspeed"] = 0;
-  }
-  if (Controller::conf.getOption("debug", true).size() > 1){
-    Controller::Storage["config"]["debug"] = Controller::conf.getInteger("debug");
-  }
-  if (Controller::Storage.isMember("config") && Controller::Storage["config"].isMember("debug") &&
-      Controller::Storage["config"]["debug"].isInt()){
-    Util::printDebugLevel = Controller::Storage["config"]["debug"].asInt();
-  }
-  // check for port, interface and username in arguments
-  // if they are not there, take them from config file, if there
-  if (Controller::Storage["config"]["controller"]["port"]){
-    Controller::conf.getOption("port", true)[0u] =
-        Controller::Storage["config"]["controller"]["port"];
-  }
-  if (Controller::Storage["config"]["controller"]["interface"]){
-    Controller::conf.getOption("interface", true)[0u] = Controller::Storage["config"]["controller"]["interface"];
-  }
-  if (Controller::Storage["config"]["controller"]["username"]){
-    Controller::conf.getOption("username", true)[0u] = Controller::Storage["config"]["controller"]["username"];
-  }
-  if (Controller::Storage["config"]["controller"].isMember("prometheus")){
-    if (Controller::Storage["config"]["controller"]["prometheus"]){
-      Controller::Storage["config"]["prometheus"] =
-          Controller::Storage["config"]["controller"]["prometheus"];
-    }
-    Controller::Storage["config"]["controller"].removeMember("prometheus");
-  }
-  if (Controller::Storage["config"]["prometheus"]){
-    Controller::conf.getOption("prometheus", true)[0u] =
-        Controller::Storage["config"]["prometheus"];
-  }
-  if (Controller::Storage["config"].isMember("accesslog")){
-    Controller::conf.getOption("accesslog", true)[0u] = Controller::Storage["config"]["accesslog"];
-  }
-  Controller::Storage["config"]["prometheus"] = Controller::conf.getString("prometheus");
-  Controller::Storage["config"]["accesslog"] = Controller::conf.getString("accesslog");
-  Controller::normalizeTrustedProxies(Controller::Storage["config"]["trustedproxy"]);
-  if (!Controller::Storage["config"]["sessionViewerMode"]){
-    Controller::Storage["config"]["sessionViewerMode"] = SESS_BUNDLE_DEFAULT_VIEWER;
-  }
-  if (!Controller::Storage["config"]["sessionInputMode"]){
-    Controller::Storage["config"]["sessionInputMode"] = SESS_BUNDLE_DEFAULT_OTHER;
-  }
-  if (!Controller::Storage["config"]["sessionOutputMode"]){
-    Controller::Storage["config"]["sessionOutputMode"] = SESS_BUNDLE_DEFAULT_OTHER;
-  }
-  if (!Controller::Storage["config"]["sessionUnspecifiedMode"]){
-    Controller::Storage["config"]["sessionUnspecifiedMode"] = 0;
-  }
-  if (!Controller::Storage["config"]["sessionStreamInfoMode"]){
-    Controller::Storage["config"]["sessionStreamInfoMode"] = SESS_DEFAULT_STREAM_INFO_MODE;
-  }
-  if (!Controller::Storage["config"].isMember("tknMode")){
-    Controller::Storage["config"]["tknMode"] = SESS_TKN_DEFAULT_MODE;
-  }
-  Controller::prometheus = Controller::Storage["config"]["prometheus"].asStringRef();
-  Controller::accesslog = Controller::Storage["config"]["accesslog"].asStringRef();
+  
+  Controller::readConfigFromDisk();
   Controller::writeConfig();
   if (!Controller::conf.is_active){return 0;}
   Controller::checkAvailProtocols();
@@ -435,74 +477,9 @@ int main_loop(int argc, char **argv){
   }
 #endif
 
-  // if a terminal is connected and we're not logging to file
+  // if a terminal is connected, check for first time setup
   if (Controller::isTerminal){
-    // check for username
-    if (!Controller::Storage.isMember("account") || Controller::Storage["account"].size() < 1){
-      std::string in_string = "";
-      while (yna(in_string) == 'x' && Controller::conf.is_active){
-        std::cout << "Account not set, do you want to create an account? (y)es, (n)o, (a)bort: ";
-        std::cout.flush();
-        std::getline(std::cin, in_string);
-        switch (yna(in_string)){
-        case 'y':{
-          // create account
-          std::string usr_string = "";
-          while (!(Controller::Storage.isMember("account") && Controller::Storage["account"].size() > 0) &&
-                 Controller::conf.is_active){
-            std::cout << "Please type in the username, a colon and a password in the following "
-                         "format; username:password"
-                      << std::endl
-                      << ": ";
-            std::cout.flush();
-            std::getline(std::cin, usr_string);
-            createAccount(usr_string);
-          }
-        }break;
-        case 'a': return 0; // abort bootup
-        case 't':{
-          createAccount("test:test");
-          if ((Controller::capabilities["connectors"].size()) &&
-              (!Controller::Storage.isMember("config") || !Controller::Storage["config"].isMember("protocols") ||
-               Controller::Storage["config"]["protocols"].size() < 1)){
-            // create protocols
-            jsonForEach(Controller::capabilities["connectors"], it){
-              if (!it->isMember("required")){
-                JSON::Value newProtocol;
-                newProtocol["connector"] = it.key();
-                Controller::Storage["config"]["protocols"].append(newProtocol);
-              }
-            }
-          }
-        }break;
-        }
-      }
-    }
-    // check for protocols
-    if ((Controller::capabilities["connectors"].size()) &&
-        (!Controller::Storage.isMember("config") || !Controller::Storage["config"].isMember("protocols") ||
-         Controller::Storage["config"]["protocols"].size() < 1)){
-      std::string in_string = "";
-      while (yna(in_string) == 'x' && Controller::conf.is_active){
-        std::cout << "Protocols not set, do you want to enable default protocols? (y)es, (n)o, "
-                     "(a)bort: ";
-        std::cout.flush();
-        std::getline(std::cin, in_string);
-        if (yna(in_string) == 'y'){
-          // create protocols
-          jsonForEach(Controller::capabilities["connectors"], it){
-            if (!it->isMember("required")){
-              JSON::Value newProtocol;
-              newProtocol["connector"] = it.key();
-              Controller::Storage["config"]["protocols"].append(newProtocol);
-            }
-          }
-        }else if (yna(in_string) == 'a'){
-          // abort controller startup
-          return 0;
-        }
-      }
-    }
+    if (!interactiveFirstTimeSetup()){return 0;}
   }
 
   // Check if we have a usable server, if not, print messages with helpful hints
@@ -530,45 +507,24 @@ int main_loop(int argc, char **argv){
     }
   }
 
-  // Upgrade old configurations
-  {
-    bool foundCMAF = false;
-    bool edit = false;
-    JSON::Value newVal;
-    jsonForEach(Controller::Storage["config"]["protocols"], it){
-      if ((*it)["connector"].asStringRef() == "HSS"){
-        edit = true;
-        continue;
-      }
-      if ((*it)["connector"].asStringRef() == "DASH"){
-        edit = true;
-        continue;
-      }
-
-      if ((*it)["connector"].asStringRef() == "SRT"){
-        edit = true;
-        JSON::Value newSubRip = *it;
-        newSubRip["connector"] = "SubRip";
-        newVal.append(newSubRip);
-        continue;
-      }
-
-      if ((*it)["connector"].asStringRef() == "CMAF"){foundCMAF = true;}
-      newVal.append(*it);
-    }
-    if (edit && !foundCMAF){newVal.append(JSON::fromString("{\"connector\":\"CMAF\"}"));}
-    if (edit){
-      Controller::Storage["config"]["protocols"] = newVal;
-      Controller::Log("CONF", "Translated protocols to new versions");
-    }
-  }
-
   // Generate instanceId once per boot.
   if (Controller::instanceId == ""){
     srand(mix(clock(), time(0), getpid()));
     do{
       Controller::instanceId += (char)(64 + rand() % 62);
     }while (Controller::instanceId.size() < 16);
+  }
+
+  // Set configrw to correct value
+  {
+    configrw = 0;
+    if (Controller::conf.getString("configrw") == "r"){
+      configrw = 1;
+    }else if (Controller::conf.getString("configrw") == "w"){
+      configrw = 2;
+    }else if (Controller::conf.getString("configrw") == "rw"){
+      configrw = 3;
+    }
   }
 
   // start stats thread
@@ -648,7 +604,7 @@ int main_loop(int argc, char **argv){
   /*LTS-END*/
   // write config
   tthread::lock_guard<tthread::mutex> guard(Controller::logMutex);
-  Controller::writeConfigToDisk();
+  Controller::writeConfigToDisk(true);
   // stop all child processes
   Util::Procs::StopAll();
   // give everything some time to print messages
@@ -719,3 +675,4 @@ int main(int argc, char **argv){
   }
   return 0;
 }
+

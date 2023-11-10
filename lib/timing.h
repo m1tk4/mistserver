@@ -8,6 +8,7 @@
 namespace Util{
   void wait(int64_t ms);  ///< Sleeps for the indicated amount of milliseconds or longer.
   void sleep(int64_t ms); ///< Sleeps for roughly the indicated amount of milliseconds.
+  void usleep(int64_t us); ///< Sleeps for roughly the indicated amount of microseconds.
   uint64_t getMS();       ///< Gets the current time in milliseconds.
   uint64_t bootSecs();    ///< Gets the current system uptime in seconds.
   uint64_t unixMS();      ///< Gets the current Unix time in milliseconds.
@@ -21,4 +22,5 @@ namespace Util{
   uint64_t getMSFromUTCString(std::string UTCString);
   uint64_t getUTCTimeDiff(std::string UTCString, uint64_t epochMillis);
   std::string getDateString(uint64_t epoch = 0);
+  uint64_t getFileUnixTime(const std::string & filename);
 }// namespace Util
