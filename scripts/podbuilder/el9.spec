@@ -129,7 +129,7 @@ rm -rf %{buildroot}
 %{_bindir}/MistAnalyserFLAC
 %{_bindir}/MistInFLAC
 %{_bindir}/MistOutFLAC
-
+%{_bindir}/MistOutJSONLine
 
 %{_libdir}/libmist.so
 %{_libdir}/libmist_srt.so
@@ -155,7 +155,9 @@ Requires: mistserver
 %{_bindir}/MistInAV
 
 %changelog
-* Sun Apr 04 2023 Dimitri Tarassenko <mitka@mitka.us> 3.2-x
+* Fri Nov 10 2023 Dimitri Tarassenko <mitka@mitka.us> 3.2.3
+- Merge from DDVTECH development branch
+* Tue Apr 04 2023 Dimitri Tarassenko <mitka@mitka.us> 3.2-x
 - Updated for MistServer 3.2
 * Mon Dec 26 2022 Dimitri Tarassenko <mitka@mitka.us> 1.0-1
 - First stab at it
