@@ -4420,7 +4420,7 @@ var UI = {
                 break;
               case 'TSSRT':
               case 'TSSRT.exe':
-                str = 'srt://'+host.host+useport+'?streamname='+(streamname == '' ? 'STREAMNAME' : streamname);
+                str = 'srt://'+host.host+useport+'?streamid='+(streamname == '' ? 'STREAMNAME' : streamname);
                 break;
               case 'RTSP':
               case 'RTSP.exe':
