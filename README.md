@@ -8,13 +8,16 @@ For full documentation, tutorials, guides and assistance, please look on our web
 
 This Fork: m1tk4/mistserver
 ===========================
-This fork of MistServer provides RPM packages for it (mainly for my own use but you're welcome to them!) using GitHub CI build system and GitHub Hosting. Check out the "Releases" section to the 
-right for links to individual RPMs.
+This fork of MistServer provides RPM packages and Docker container images for it (mainly for my own use but you're welcome to them!) using GitHub CI build system, GitHub hosting and container repositories. Check out the [Releases](https://github.com/m1tk4/mistserver/releases) and [Packages](https://github.com/m1tk4?tab=packages&repo_name=mistserver) sections to the 
+right for links to individual RPMs and Docker container images.
 
-The releases in this fork track `development` branch in https://github.com/DDVTECH/mistserver/tree/development
+The releases in this fork track `development` branch in https://github.com/DDVTECH/mistserver/tree/development.
 
-Getting MistServer onto your system
-===================================
+The Docker images are built based on [Alpine Linux](https://alpinelinux.org/) containers. `mistserver-alpine` tracks the `master` branch in https://github.com/DDVTECH/mistserver/tree/master and `mistserver-alpine-dev` tracks the `development` branch.
+
+
+Installing MistServer RPMs
+==========================
 
 1. Make sure CRB, EPEL, and RPMFusion repositories are enabled on your server:
 
@@ -47,6 +50,45 @@ Getting MistServer onto your system
     firewall-cmd --permanent --add-port={4242,8888,8889}/udp; \
     firewall-cmd --reload
     ```
+
+Running MistServer Docker Containers
+====================================
+
+1. Install Docker on your system as per https://docs.docker.com/engine/install/
+
+2. To pull the image and start the container, edit the following with your file paths and shared memory size and run:
+
+   ```bash
+   docker run \
+     --detach \
+     --mount type=bind,source=/PATH/TO/CONFIG.JSON,destination=/config.json \
+     --mount type=bind,source=/FOLDER/WITH/VIDEOFILES,destination=/video \
+     --shm-size=1G \
+     --network=host \
+     ghcr.io/m1tk4/mistserver-alpine:latest
+   ```
+
+    or
+
+   ```bash
+   docker run \
+     --detach \
+     --mount type=bind,source=/PATH/TO/CONFIG.JSON,destination=/config.json \
+     --mount type=bind,source=/FOLDER/WITH/VIDEOFILES,destination=/video \
+     --shm-size=1G \
+     -p 8080:8080 -p 4242:4242 -p 4200:4200 -p 5444:5444 -p 8889:8889/udp -p 443:443 \
+     ghcr.io/m1tk4/mistserver-alpine:latest
+   ```
+
+
+    The shared memory size should take values like '4G' etc. On dedicated MistServer systems it is a good practice to use 95% of available RAM.
+
+For more details on running MistServer in Docker Containers, see: 
+
+ - https://docs.mistserver.org/mistserver/installation/docker/
+ - https://docs.mistserver.org/mistserver/quickstart/installation#docker-specific-instructions
+
+
 
 Usage
 =====
