@@ -8,7 +8,7 @@ name: Docker Image Build and Push
 on:
   push:
     tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+-alpine-dev'
+      - 'alpine-dev/v[0-9]+.[0-9]+.[0-9]+'
       # see https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#patterns-to-match-branches-and-tags for details
 
 env:
@@ -35,9 +35,9 @@ jobs:
           images: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            type=match,pattern=alpine-dev/v(.*),group=1
+            type=match,pattern=alpine-dev/v(\d+\.\d+)\.*,group=1
+          # see https://github.com/docker/metadata-action?tab=readme-ov-file#typematch for details
 
       - name: Log in to DockerHub
         uses: docker/login-action@v3
