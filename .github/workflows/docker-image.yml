@@ -8,12 +8,12 @@ name: Docker Image Build and Push
 on:
   push:
     tags:
-      - 'alpine-dev/v[0-9]+.[0-9]+.[0-9]+'
+      - 'alpine/v[0-9]+.[0-9]+.[0-9]+'
       # see https://docs.github.com/en/actions/writing-workflows/workflow-syntax-for-github-actions#patterns-to-match-branches-and-tags for details
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/mistserver-alpine-dev
+  IMAGE_NAME: ${{ github.repository_owner }}/mistserver-alpine
 
 jobs:
   build-and-push-image:
@@ -35,8 +35,8 @@ jobs:
           images: |
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=match,pattern=alpine-dev/v(.*),group=1
-            type=match,pattern=alpine-dev/v(\d+\.\d+)\.*,group=1
+            type=match,pattern=alpine/v(.*),group=1
+            type=match,pattern=alpine/v(\d+\.\d+)\.*,group=1
           # see https://github.com/docker/metadata-action?tab=readme-ov-file#typematch for details
 
       - name: Log in to DockerHub
