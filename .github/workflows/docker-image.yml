@@ -27,6 +27,8 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-tags: true
 
       - name: Docker Metadata
         id: meta
