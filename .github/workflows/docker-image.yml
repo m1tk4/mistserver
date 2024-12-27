@@ -1,4 +1,8 @@
 
+#
+#  This follows an example in https://github.com/docker/metadata-action and some earlier versions of videorock
+#
+
 name: Docker Image Build and Push
 
 on:
