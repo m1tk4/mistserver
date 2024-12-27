@@ -7,10 +7,8 @@ name: Docker Image Build and Push
 
 on:
   push:
-    branches: 
-      - target/alpine-docker-dev
     tags:
-      - 'v*'
+      - 'v[0-9]+.[0-9]+.[0-9]+-alpine-dev$'
 
 env:
   REGISTRY: ghcr.io
