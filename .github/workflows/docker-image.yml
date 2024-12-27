@@ -12,9 +12,6 @@ on:
     tags:
       - 'v*'
 
-  pull_request:
-    branches:  [ target/alpine-docker-dev ]
-
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository_owner }}/mistserver-alpine-dev
@@ -40,7 +37,6 @@ jobs:
             ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
