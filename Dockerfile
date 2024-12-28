@@ -39,5 +39,4 @@ COPY --from=mist_build /out/ /usr/
 #EOF
 ENV LANG=en_US.utf8
 EXPOSE 4242 8080 1935 5554
-ENTRYPOINT ["/bin/bash"]
-#ENTRYPOINT ["MistController"]
+ENTRYPOINT ["MistController"]
