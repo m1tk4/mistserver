@@ -16,7 +16,6 @@ EOF
 
 RUN <<EOF 
 mkdir /build
-mkdif /out
 cd /build 
 meson setup -Dprefix=/out /src 
 ninja install
