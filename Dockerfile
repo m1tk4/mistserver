@@ -28,6 +28,8 @@ FROM ubuntu:25.04
 LABEL org.opencontainers.image.authors="Dimitri Tarassenko <mitka@mitka.us>"
 
 COPY --from=mist_build /out/ /usr/
+ADD mistserver.service /usr/lib/systemd/system/mistserver.service
+
 ENV LANG=en_US.utf8
 EXPOSE 4242 8080 1935 5554
 ENTRYPOINT ["MistController"]
