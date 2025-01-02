@@ -1,0 +1,46 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Build Docker Image",
+			"type": "shell",
+			"command": "docker build --tag m1tk4/mistserver .",
+			"group": "build"
+		},
+
+		{
+			"label": "Kill Running Instance",
+			"type": "shell",
+			"command": "killall --signal SIGINT --wait MistController --quiet || true",
+			"group": "build",
+		},
+
+		{
+			"label": "Build Locally",
+			"type": "shell",
+			"dependsOn": [
+				"Kill Running Instance"
+			],
+			"command":[
+				"meson setup build &&",
+				"meson compile -C build"
+			],
+			"group": "build",
+		},
+
+		{
+			"label": "Run Locally",
+			"type": "shell",
+			"dependsOn": [
+				"Build Locally"
+			],
+			"command":[
+				"build/MistController --config .vscode/mistserver-config.json --account admin:admin"
+			],
+			"group": "build",
+			"runOptions": {
+				"instanceLimit": 2
+			}
+		}
+	]
+}
