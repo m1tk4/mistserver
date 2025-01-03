@@ -64,6 +64,7 @@ namespace Util{
     void addBasicConnectorOptions(JSON::Value &capabilities);
     void addStandardPushCapabilities(JSON::Value &capabilities);
     void addConnectorOptions(int port, JSON::Value &capabilities);
+    void debug();
   };
 
   /// The interface address the current serveSocket function is listening on

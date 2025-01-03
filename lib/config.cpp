@@ -20,6 +20,7 @@
 #include <pwd.h>
 #include <stdarg.h> // for va_list
 #include <stdlib.h>
+#include <sstream>
 
 #ifdef __CYGWIN__
 #include <windows.h>
@@ -194,6 +195,16 @@ void Util::Config::wipeShm(){
     closedir(d);
   }
   if (deleted){WARN_MSG("Wiped %" PRIu64 " shared memory file(s)", deleted);}
+}
+
+void Util::Config::debug(){
+  FAIL_MSG("config:debug!");
+
+  std::string dump = vals.toPrettyString(2);
+  std::istringstream iss(dump);
+  for (std::string line; std::getline(iss, line); ) {
+      FAIL_MSG("%s",line.c_str());
+  }
 }
 
 Util::Config::Config(){
