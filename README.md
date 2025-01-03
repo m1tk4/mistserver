@@ -3,68 +3,87 @@ MistServer
 
 MistServer is an open source, public domain, full-featured, next-generation streaming media toolkit for OTT (internet streaming), designed to be ideal for developers and system integrators.
 
-For full documentation, see: https://docs.mistserver.org
+For full documentation, tutorials, guides and assistance, please look on our website at: https://mistserver.org
 
-For support and assistance, please look on our website at: https://mistserver.org
 
-Getting MistServer onto your system
-===================================
+This Fork: m1tk4/mistserver
+===========================
+This fork of MistServer provides RPM packages and Docker container images for it (mainly for my own use but you're welcome to them!) using GitHub CI build system, GitHub hosting and container repositories. Check out the [Releases](https://github.com/m1tk4/mistserver/releases) and [Packages](https://github.com/m1tk4?tab=packages&repo_name=mistserver) sections to the 
+right for links to individual RPMs and Docker container images.
 
-We provide pre-compiled binaries for most common operating systems here: https://mistserver.org/download
+The releases and docker images in this fork track `development` branch in https://github.com/DDVTECH/mistserver/tree/development.
 
-Using the "Copy install cmd" button will give you a command you can paste into a terminal to set up MistServer running as root under your system's init daemon (systemd recommended, but not required).
 
-You can also manually install, full instructions can be found in our manual: https://docs.mistserver.org/category/installation
+Installing MistServer RPMs
+==========================
 
-Compile instructions
-====================
+1. Make sure CRB, EPEL, and RPMFusion repositories are enabled on your server:
 
-The only supported build system for compiling MistServer is Meson, since CMake support was discontinued in MistServer 3.4.
+    ```bash
+    # Rocky9/Alma9:
+    dnf -y install 'dnf-command(config-manager)'; \
+    dnf config-manager --set-enabled crb; \
+    dnf config-manager --set-enabled devel; \
+    dnf -y install epel-release; \
+    dnf -y install --nogpgcheck \
+        https://dl.fedoraproject.org/pub/epel/epel-release-latest-$(rpm -E %rhel).noarch.rpm; \
+    dnf -y install --nogpgcheck \
+        https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-$(rpm -E %rhel).noarch.rpm \
+        https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-$(rpm -E %rhel).noarch.rpm
+    ```
+2. Install `mistserver` RPM from https://github.com/m1tk4/mistserver/releases
 
-The project makes full use of Meson's support for "wraps" and all dependencies can be automatically fulfilled through this system. If a system-wide library is available (and compatible), that one will be preferred.
+3. If you need to be able to stream files other than MP4/TS install `mistserver-in-av` RPM.
 
-The following command will create a subdirectory named `build` and set it up for compiling MistServer (assuming meson is installed on your system):
+4. Enable and start `mistserver` service:
 
-```
-meson setup build
-```
+    ```bash
+    systemctl enable --now mistserver
+    ```
 
-The default options should suffice in most cases, but a full list of possible compile options can be found by running `meson configure`.
+5. Configure `firewalld` according to the outputs you are using in MistServer. Sample commands:
 
-Then, to actually build:
+    ```bash
+    firewall-cmd --permanent --add-port={4242,4200,8080,1935,5554}/tcp; \
+    firewall-cmd --permanent --add-port={4242,8888,8889}/udp; \
+    firewall-cmd --reload
+    ```
 
-```
-cd build
-ninja
-```
+Running MistServer Docker Containers
+====================================
 
-That should compile MistServer to your build directory, and it can then be ran by running:
+1. Install Docker on your system as per https://docs.docker.com/engine/install/
 
-```
-./MistController
-```
+2. To pull the image and start the container, edit the following with your file paths and shared memory size and run:
 
-See the "Usage" chapter below for more details on actually running MistServer.
-MistServer can be in any directory, as long as all its binaries (that you want/need) are in one directory together.
-You can (optionally) install system-wide (usually requires you to be root user or using `sudo`) by running:
+   ```bash
+   docker run \
+     --detach \
+     --mount type=bind,source=/PATH/TO/CONFIG.JSON,destination=/config.json \
+     --mount type=bind,source=/FOLDER/WITH/VIDEOFILES,destination=/video \
+     --shm-size=1G \
+     --network=host \
+     ghcr.io/m1tk4/mistserver-ubuntu-dev:latest
+   ```
 
-```
-ninja install
-```
+The shared memory size should take values like '4G' etc. On dedicated MistServer systems it is a good practice to use 95% of available RAM.
+
+For more details on running MistServer in Docker Containers, see: 
+
+ - https://docs.mistserver.org/mistserver/installation/docker/
+ - https://docs.mistserver.org/mistserver/quickstart/installation#docker-specific-instructions
+
+
 
 Usage
 =====
 
-MistServer is booted by starting the `MistController` binary, which then scans the directory it is stored in for further `Mist*` binaries and runs them to discover what inputs/outputs/processes are available. (Yes, this means you can delete any binary you don't want/need and it will just do what you expect/want.)
-
-Running the controller in a terminal will walk you through a brief first-time setup, and then listen on port 4242 for API connections.
 Accessing port 4242 from a web browser will bring up a web interface capable of easily running most API commands for human-friendly configuration.
-If there is no interactive terminal when MistServer is first started, the first-time setup can be completed using the web interface instead.
 
-Full usage instructions and API specifications can be found in the online manual: https://docs.mistserver.org/
+Full usage instructions and API specifications can be found in the manual: https://mistserver.org/guides/latest
 
-Contributing
-============
 
-If you're interested in contributing to MistServer development, please reach out to us through info@mistserver.org. Full contribution guidelines will be made available soon.
+Compile instructions
+====================
 
+Check out Visual Studio Code tasks.
