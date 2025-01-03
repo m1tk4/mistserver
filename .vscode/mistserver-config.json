@@ -1,1 +1,105 @@
-{"account":{"admin":{"password":"21232f297a57a5a743894a0e4a801fc3"}},"autopushes":null,"bandwidth":{"exceptions":["::1","127.0.0.0/8","10.0.0.0/8","192.168.0.0/16","172.16.0.0/12"]},"config":{"accesslog":"LOG","controller":{"interface":null,"port":null,"username":null},"defaultStream":null,"limits":null,"prometheus":"","protocols":[{"connector":"AAC"},{"connector":"CMAF"},{"connector":"DTSC"},{"connector":"EBML"},{"connector":"FLAC"},{"connector":"FLV"},{"connector":"H264"},{"connector":"HDS"},{"connector":"HLS"},{"connector":"HTTP"},{"connector":"HTTPTS"},{"connector":"JPG"},{"connector":"JSON"},{"connector":"MP3"},{"connector":"MP4"},{"connector":"OGG"},{"connector":"RTMP"},{"connector":"RTSP"},{"connector":"SDP"},{"connector":"SubRip"},{"connector":"TSRIST"},{"connector":"TSSRT"},{"connector":"WAV"},{"connector":"WebRTC"}],"serverid":null,"sessionInputMode":15,"sessionOutputMode":15,"sessionStreamInfoMode":1,"sessionUnspecifiedMode":0,"sessionViewerMode":14,"tknMode":15,"triggers":null,"trustedproxy":[]},"extwriters":null,"push_settings":{"maxspeed":0,"wait":3},"streams":{"bmd_uuid460b34e1-0d3d-4758-ba7e-f9409f79be20bmd_namem1tk4":{"name":"bmd_uuid460b34e1-0d3d-4758-ba7e-f9409f79be20bmd_namem1tk4","processes":[],"source":"push://","stop_sessions":false}},"ui_settings":{"HTTPUrl":"http://rocky:8080/"},"variables":null}
+{
+  "account":{
+    "admin":{
+      "password":"21232f297a57a5a743894a0e4a801fc3"
+    }
+  },
+  "autopushes":null,
+  "bandwidth":{
+    "exceptions":[
+      "::1", "127.0.0.0/8", "10.0.0.0/8", "192.168.0.0/16", "172.16.0.0/12"
+    ]
+  },
+  "config":{
+    "accesslog":"LOG",
+    "controller":{
+      "interface":null,
+      "port":null,
+      "username":null
+    },
+    "defaultStream":null,
+    "limits":null,
+    "prometheus":"",
+    "protocols":[
+      {
+        "connector":"AAC"
+      }, {
+        "connector":"CMAF"
+      }, {
+        "connector":"DTSC"
+      }, {
+        "connector":"EBML"
+      }, {
+        "connector":"FLAC"
+      }, {
+        "connector":"FLV"
+      }, {
+        "connector":"H264"
+      }, {
+        "connector":"HDS"
+      }, {
+        "connector":"HLS"
+      }, {
+        "connector":"HTTP"
+      }, {
+        "connector":"HTTPTS"
+      }, {
+        "connector":"JPG"
+      }, {
+        "connector":"JSON"
+      }, {
+        "connector":"MP3"
+      }, {
+        "connector":"MP4"
+      }, {
+        "connector":"OGG"
+      }, {
+        "connector":"RTMP"
+      }, {
+        "connector":"RTSP"
+      }, {
+        "connector":"SDP"
+      }, {
+        "connector":"SubRip"
+      }, {
+        "connector":"TSRIST"
+      }, {
+        "connector":"TSSRT"
+      }, {
+        "connector":"WAV"
+      }, {
+        "connector":"WebRTC"
+      }
+    ],
+    "serverid":null,
+    "sessionInputMode":15,
+    "sessionOutputMode":15,
+    "sessionStreamInfoMode":1,
+    "sessionUnspecifiedMode":0,
+    "sessionViewerMode":14,
+    "tknMode":15,
+    "triggers":null,
+    "trustedproxy":[]
+  },
+  "extwriters":null,
+  "push_settings":{
+    "maxspeed":0,
+    "wait":3
+  },
+  "streams":{
+    "bebe":{
+      "acceptable":"1",
+      "always_on":true,
+      "name":"bebe",
+      "processes":[],
+      "raw":false,
+      "realtime":false,
+      "source":"srt://:8886",
+      "stop_sessions":false
+    }
+  },
+  "ui_settings":{
+    "HTTPUrl":"http://rocky:8080/"
+  },
+  "variables":null
+}
