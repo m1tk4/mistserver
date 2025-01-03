@@ -11,7 +11,11 @@
 		{
 			"label": "Kill Running Instance",
 			"type": "shell",
-			"command": "killall --signal SIGINT --wait MistController --quiet || true",
+			"command": [
+				"killall --signal SIGINT --wait MistController --quiet;",
+				"rm -f /dev/shm/Mst*;",
+				"rm -f /dev/shm/sem.Mst*"
+			],
 			"group": "build",
 		},
 
